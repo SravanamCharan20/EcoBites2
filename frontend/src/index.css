@@ -1,0 +1,29 @@
+/* index.css or main.css */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body{
+    background-color: rgb(255, 255, 255);
+}
+.button-transition {
+    transition: background-color 0.4s ease, color 0.4s ease;
+ }
+ /* Add this to your CSS file */
+.dropdown-enter {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  .dropdown-enter-active {
+    opacity: 1;
+    transform: translateY(0);
+    transition: opacity 200ms, transform 200ms;
+  }
+  .dropdown-exit {
+    opacity: 1;
+  }
+  .dropdown-exit-active {
+    opacity: 0;
+    transition: opacity 200ms;
+  }
+  
