@@ -52,14 +52,14 @@ const UserProfile = () => {
       animate={{ opacity: 1 }}
       transition={{ duration: 0.5 }}
     >
-      <h1 className="text-2xl font-semibold text-center mb-4">Your Profile</h1>
+      <h1 className="text-6xl font-semibold text-center mb-4">Your Profile</h1>
       {error && <p className="text-red-500">{error}</p>}
       {user ? (
         <div className="text-center">
           <img 
             src={profilePictureUrl} 
             alt="Profile" 
-          className="w-36 h-36 rounded-full mx-auto mb-4 border border-green-200" 
+          className="w-6 h-44 rounded-full mx-auto mb-4 border border-green-200" 
           />
           <p className="text-lg font-medium">Username: {user.username}</p>
           <p className="text-gray-600">Email: {user.email}</p>

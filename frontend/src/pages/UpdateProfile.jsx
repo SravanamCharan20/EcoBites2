@@ -89,7 +89,7 @@ const UpdateProfile = () => {
 
   return (
     <div className='p-6 max-w-lg mx-auto rounded-3xl'>
-      <h1 className='text-3xl text-gray-800 text-center font-semibold my-4'>Update Profile</h1>
+      <h1 className='text-6xl text-gray-800 text-center font-semibold mb-10 my-4'>Update Profile</h1>
       <form onSubmit={handleUpdate} className='flex flex-col gap-4'>
         <div className='flex flex-col'>
           <label htmlFor='username' className='text-gray-600 mb-1'>Username:</label>

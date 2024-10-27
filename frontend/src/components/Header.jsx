@@ -77,12 +77,13 @@ const Header = () => {
         isVisible ? 'translate-y-0' : '-translate-y-12'
       }`}
     >
-      <div>
-        <Link to="/" className="text-1xl font-bold ">
-          EcoBites
+      <div className='flex items-center space-x-2'>
+        <Link to="/" className="flex items-center text-xl font-bold hover:text-gray-800 transition duration-300">
+          <img src='ilogo.jpg' className='h-12 w-12' alt="EcoBites Logo" />
+          <span className="ml-2">EcoBites</span> {/* Added a span for better spacing */}
         </Link>
       </div>
-      <div className='flex flex-grow justify-center'>
+      <div className='flex flex-grow mr-32 justify-center'>
         <div className="flex items-center space-x-8">
           <Link
             to="/avl"
