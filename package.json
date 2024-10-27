@@ -22,8 +22,6 @@
     "mongoose": "^8.7.0",
     "multer": "^1.4.5-lts.1",
     "nodemon": "^3.1.4",
-    "twilio": "^5.3.0",
-    "vite": "^latest", 
-    "@vitejs/plugin-react-swc": "^latest"
+    "twilio": "^5.3.0"
   }
 }
