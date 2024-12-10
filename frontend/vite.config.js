@@ -7,7 +7,7 @@ export default defineConfig({
     host: '0.0.0.0',
     proxy: {
       '/api': {
-        target: 'http://localhost:6001',
+        target: 'http://ecobites2-production.up.railway.app',
         secure: false,
       },
     },
