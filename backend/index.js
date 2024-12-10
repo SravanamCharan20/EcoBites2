@@ -18,7 +18,7 @@ app.use('/api/user', userRouter);
 app.use('/api/auth', authRouter);
 app.use('/api/donor', DonorForm);
 app.use(cors({
-    origin: process.env.CORS_ORIGIN || 'http://localhost:5173', // Read CORS origin from environment variable
+    origin: '*', 
     methods: ['GET', 'POST', 'PUT', 'DELETE'], 
     credentials: true, 
 }));
