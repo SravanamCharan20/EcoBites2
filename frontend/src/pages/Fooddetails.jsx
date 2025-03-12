@@ -172,23 +172,41 @@ const FoodDetails = () => {
     }
 
     try {
+      const donorId = foodDetails.userId;
+      
+      console.log('Initializing chat with:', {
+        donorId,
+        requesterId: currentUser.id,
+        foodItemId: foodDetails._id
+      });
+
       const response = await fetch('/api/chat/initialize', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          donorId: foodDetails.userId,
+          donorId: donorId,
           requesterId: currentUser.id,
           foodItemId: foodDetails._id
         }),
       });
 
-      if (!response.ok) throw new Error('Failed to initialize chat');
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('Chat initialization error:', errorData);
+        throw new Error(errorData.message || 'Failed to initialize chat');
+      }
+      
       const chat = await response.json();
-      navigate('/chats', { state: { selectedChat: chat } });
+      console.log('Chat initialized successfully:', chat);
+      
+      // Navigate directly to the chat page with the specific chat selected
+      const chatPath = `/chats?chatId=${chat._id}`;
+      navigate(chatPath);
     } catch (error) {
       console.error('Error initializing chat:', error);
+      alert('Failed to start chat. Please try again.');
     }
   };
 
@@ -247,13 +265,13 @@ const FoodDetails = () => {
             >
               {showRequestForm ? 'Cancel Request' : 'Request Item '}<HiArrowSmRight className='ml-2'/>
             </button>
-          
-          <button
-            onClick={handleChatInitialize}
-            className="bg-blue-500 text-white px-4 py-2 rounded-full hover:bg-blue-600 transition-colors ml-2"
-          >
-            Chat with Donor
-          </button>
+            
+            <button
+              onClick={handleChatInitialize}
+              className="bg-blue-500 text-white px-4 py-2 rounded-full hover:bg-blue-600 transition-colors ml-2"
+            >
+              Chat with Donor
+            </button>
           </div>
         </div>
       </div>

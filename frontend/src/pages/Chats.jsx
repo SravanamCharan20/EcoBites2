@@ -2,18 +2,36 @@ import { useState, useEffect, useRef } from 'react';
 import { useSelector } from 'react-redux';
 import { motion } from 'framer-motion';
 import { FiSend } from 'react-icons/fi';
+import { MdFastfood } from 'react-icons/md';
+import { FaCouch } from 'react-icons/fa';
+import { useSearchParams } from 'react-router-dom';
 import io from 'socket.io-client';
 
 const Chats = () => {
+  const [searchParams] = useSearchParams();
   const [chats, setChats] = useState([]);
   const [selectedChat, setSelectedChat] = useState(null);
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
   const [socketError, setSocketError] = useState(false);
+  const [activeTab, setActiveTab] = useState('food'); // 'food' or 'nonfood'
   const messagesEndRef = useRef(null);
   const socketRef = useRef(null);
   const { currentUser } = useSelector((state) => state.user);
+
+  // Handle direct chat navigation
+  useEffect(() => {
+    const chatId = searchParams.get('chatId');
+    if (chatId && chats.length > 0) {
+      const chat = chats.find(c => c._id === chatId);
+      if (chat) {
+        setSelectedChat(chat);
+        // Set the active tab based on the chat type
+        setActiveTab(chat.foodItemId?.foodItems ? 'food' : 'nonfood');
+      }
+    }
+  }, [searchParams, chats]);
 
   // Initialize socket connection
   useEffect(() => {
@@ -92,14 +110,84 @@ const Chats = () => {
       const response = await fetch(`/api/chat/user/${currentUser.id}`);
       if (!response.ok) throw new Error('Failed to fetch chats');
       const data = await response.json();
+      
+      console.log('Chats - Raw chat data:', data);
+      
+      // Fetch additional details for non-food items
+      const enhancedChats = await Promise.all(data.map(async (chat) => {
+        // Check if this is a non-food chat (no foodItems array)
+        const isNonFoodChat = !chat.foodItemId?.foodItems;
+        
+        console.log('Chats - Processing chat:', {
+          chatId: chat._id,
+          isNonFoodChat,
+          itemId: chat.foodItemId?._id,
+          currentDetails: chat.foodItemId
+        });
+
+        if (isNonFoodChat && chat.foodItemId?._id) {
+          try {
+            const nonFoodResponse = await fetch(`/api/donor/get-nondonor/${chat.foodItemId._id}`);
+            if (!nonFoodResponse.ok) {
+              throw new Error('Failed to fetch non-food details');
+            }
+            
+            const nonFoodData = await nonFoodResponse.json();
+            console.log('Chats - Fetched non-food details:', {
+              chatId: chat._id,
+              nonFoodData
+            });
+            
+            // Create enhanced chat object with non-food details
+            const enhancedChat = {
+              ...chat,
+              foodItemId: {
+                _id: chat.foodItemId._id,
+                nonFoodItems: nonFoodData.nonFoodItems || [],
+                availableUntil: nonFoodData.availableUntil,
+                donationType: nonFoodData.donationType,
+                location: nonFoodData.location,
+                email: nonFoodData.email,
+                contactNumber: nonFoodData.contactNumber,
+                name: nonFoodData.name
+              }
+            };
+
+            console.log('Chats - Enhanced non-food chat:', {
+              chatId: chat._id,
+              enhancedData: enhancedChat.foodItemId
+            });
+
+            return enhancedChat;
+          } catch (error) {
+            console.error('Chats - Error fetching non-food details:', {
+              chatId: chat._id,
+              error: error.message
+            });
+            return chat;
+          }
+        }
+        return chat;
+      }));
+
       // Filter out self-chats
-      const filteredChats = data.filter(chat => 
+      const filteredChats = enhancedChats.filter(chat => 
         chat.donorId._id !== chat.requesterId._id
       );
+      
+      console.log('Chats - Final enhanced chats:', 
+        filteredChats.map(chat => ({
+          chatId: chat._id,
+          isFood: !!chat.foodItemId?.foodItems,
+          itemDetails: chat.foodItemId?.foodItems?.[0] || chat.foodItemId?.nonFoodItems?.[0],
+          donationType: chat.foodItemId?.donationType
+        }))
+      );
+      
       setChats(filteredChats);
       setLoading(false);
     } catch (error) {
-      console.error('Error fetching chats:', error);
+      console.error('Chats - Error fetching chats:', error);
       setLoading(false);
     }
   };
@@ -191,6 +279,12 @@ const Chats = () => {
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
+  // Filter chats based on active tab
+  const filteredChats = chats.filter(chat => {
+    const isFood = chat.foodItemId?.foodItems !== undefined;
+    return activeTab === 'food' ? isFood : !isFood;
+  });
+
   if (!currentUser?.id) {
     return (
       <div className="flex justify-center items-center h-screen">
@@ -213,12 +307,42 @@ const Chats = () => {
         {/* Chat List */}
         <div className="w-1/4 bg-white rounded-lg shadow-lg overflow-hidden">
           <div className="p-4 border-b">
-            <h2 className="text-2xl text-gray-800 font-semibold">Messages</h2>
+            <h2 className="text-2xl text-gray-800 font-semibold mb-4">Messages</h2>
+            <div className="flex rounded-lg overflow-hidden border-2 border-gray-200">
+              <button
+                className={`flex-1 py-2 px-4 ${
+                  activeTab === 'food'
+                    ? 'bg-gray-800 text-white'
+                    : 'bg-white text-gray-600 hover:bg-gray-100'
+                }`}
+                onClick={() => setActiveTab('food')}
+              >
+                <div className="flex items-center justify-center space-x-2">
+                  <MdFastfood />
+                  <span>Food</span>
+                </div>
+              </button>
+              <button
+                className={`flex-1 py-2 px-4 ${
+                  activeTab === 'nonfood'
+                    ? 'bg-gray-800 text-white'
+                    : 'bg-white text-gray-600 hover:bg-gray-100'
+                }`}
+                onClick={() => setActiveTab('nonfood')}
+              >
+                <div className="flex items-center justify-center space-x-2">
+                  <FaCouch />
+                  <span>Non-Food</span>
+                </div>
+              </button>
+            </div>
           </div>
-          <div className="overflow-y-auto h-[calc(100vh-200px)]">
-            {chats.map((chat) => {
+          <div className="overflow-y-auto h-[calc(100vh-280px)]">
+            {filteredChats.map((chat) => {
               if (!chat?._id || !chat?.donorId?._id || !chat?.requesterId?._id) return null;
-              if (chat.donorId._id === chat.requesterId._id) return null;
+              
+              const itemDetails = chat.foodItemId?.foodItems?.[0] || chat.foodItemId?.nonFoodItems?.[0];
+              const isFood = chat.foodItemId?.foodItems !== undefined;
               
               return (
                 <motion.div
@@ -229,22 +353,76 @@ const Chats = () => {
                   onClick={() => setSelectedChat(chat)}
                   whileHover={{ scale: 1.01 }}
                 >
-                  <div className="flex items-center space-x-3">
+                  <div className="flex items-start space-x-3">
+                    <div className="flex-shrink-0 mt-1">
+                      {isFood ? (
+                        <MdFastfood className="text-green-500 text-xl" />
+                      ) : (
+                        <FaCouch className="text-blue-500 text-xl" />
+                      )}
+                    </div>
                     <div className="flex-1">
-                      <p className="font-semibold text-gray-800">
-                        {chat.donorId._id === currentUser.id
-                          ? chat?.requesterId?.username || 'Unknown User'
-                          : chat?.donorId?.username || 'Unknown User'}
-                      </p>
-                      <p className="text-sm text-gray-500 truncate">
+                      <div className="flex justify-between items-start">
+                        <p className="font-semibold text-gray-800">
+                          {chat.donorId._id === currentUser.id
+                            ? chat?.requesterId?.username || 'Unknown User'
+                            : chat?.donorId?.username || 'Unknown User'}
+                        </p>
+                        {chat.messages?.length > 0 && chat.messages[chat.messages.length - 1]?.timestamp && (
+                          <span className="text-xs text-gray-400">
+                            {formatTime(chat.messages[chat.messages.length - 1].timestamp)}
+                          </span>
+                        )}
+                      </div>
+                      {itemDetails && (
+                        <div className="mt-1 space-y-1">
+                          {isFood ? (
+                            <>
+                              <p className="text-xs text-gray-500">
+                                🍽️ Food Item: <span className="font-medium">{itemDetails.name}</span>
+                              </p>
+                              <p className="text-xs text-gray-500">
+                                Quantity: {itemDetails.quantity} {itemDetails.unit}
+                                {itemDetails.expiryDate && 
+                                  ` • Expires: ${new Date(itemDetails.expiryDate).toLocaleDateString()}`
+                                }
+                              </p>
+                            </>
+                          ) : (
+                            <>
+                              <p className="text-xs text-gray-500">
+                                📦 Non-Food Item: <span className="font-medium">{itemDetails.name}</span>
+                              </p>
+                              <p className="text-xs text-gray-500">
+                                Category: {itemDetails.type} • Condition: {itemDetails.condition}
+                              </p>
+                              <p className="text-xs text-gray-500">
+                                Quantity: {itemDetails.quantity} {itemDetails.unit || 'pieces'}
+                              </p>
+                              <p className="text-xs text-gray-500">
+                                {chat.foodItemId.donationType === 'free' ? '🎁 Free Item' : `💰 Price: ${itemDetails.price}`}
+                              </p>
+                              <p className="text-xs text-gray-500">
+                                Available until: {new Date(chat.foodItemId.availableUntil).toLocaleDateString()}
+                              </p>
+                              {chat.foodItemId.location && (
+                                <p className="text-xs text-gray-500">
+                                  📍 Location available
+                                </p>
+                              )}
+                              {chat.foodItemId.contactNumber && (
+                                <p className="text-xs text-gray-500">
+                                  📞 Contact: {chat.foodItemId.contactNumber}
+                                </p>
+                              )}
+                            </>
+                          )}
+                        </div>
+                      )}
+                      <p className="text-sm text-gray-500 truncate mt-2">
                         {chat.messages?.[chat.messages.length - 1]?.content || 'No messages yet'}
                       </p>
                     </div>
-                    {chat.messages?.length > 0 && chat.messages[chat.messages.length - 1]?.timestamp && (
-                      <span className="text-xs text-gray-400">
-                        {formatTime(chat.messages[chat.messages.length - 1].timestamp)}
-                      </span>
-                    )}
                   </div>
                 </motion.div>
               );
@@ -257,18 +435,65 @@ const Chats = () => {
           {selectedChat ? (
             <>
               <div className="p-4 bg-gray-800 text-white">
-                <h3 className="text-xl font-semibold">
-                  {selectedChat?.donorId?._id === currentUser?.id
-                    ? selectedChat?.requesterId?.username || 'Unknown User'
-                    : selectedChat?.donorId?.username || 'Unknown User'}
-                </h3>
+                <div className="flex items-start space-x-3">
+                  <div className="flex-shrink-0 mt-1">
+                    {selectedChat.foodItemId?.foodItems ? (
+                      <MdFastfood className="text-green-400 text-xl" />
+                    ) : (
+                      <FaCouch className="text-blue-400 text-xl" />
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-xl font-semibold">
+                      {selectedChat?.donorId?._id === currentUser?.id
+                        ? selectedChat?.requesterId?.username || 'Unknown User'
+                        : selectedChat?.donorId?.username || 'Unknown User'}
+                    </h3>
+                    {selectedChat.foodItemId && (
+                      <div className="space-y-1 mt-1">
+                        {(() => {
+                          const itemDetails = selectedChat.foodItemId?.foodItems?.[0] || selectedChat.foodItemId?.nonFoodItems?.[0];
+                          const isFood = selectedChat.foodItemId?.foodItems !== undefined;
+                          
+                          return itemDetails ? (
+                            <>
+                              {isFood ? (
+                                <>
+                                  <p className="text-sm text-gray-300">
+                                    🍽️ Food Item: {itemDetails.name}
+                                  </p>
+                                  <p className="text-sm text-gray-300">
+                                    Quantity: {itemDetails.quantity} {itemDetails.unit} • Expires: {new Date(itemDetails.expiryDate).toLocaleDateString()}
+                                  </p>
+                                </>
+                              ) : (
+                                <>
+                                  <p className="text-sm text-gray-300">
+                                    📦 Non-Food Item: {itemDetails.name}
+                                  </p>
+                                  <p className="text-sm text-gray-300">
+                                    Quantity: {itemDetails.quantity} • Type: {itemDetails.type} • {itemDetails.condition}
+                                  </p>
+                                  <p className="text-sm text-gray-300">
+                                    {selectedChat.foodItemId.donationType === 'free' ? '🎁 Free Item' : `💰 Price: ${itemDetails.price}`}
+                                  </p>
+                                </>
+                              )}
+                            </>
+                          ) : null;
+                        })()}
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
               <div className="flex-1 overflow-y-auto p-4 bg-gray-50">
                 <div className="space-y-4">
                   {messages.map((message, index) => {
                     if (!message?.content) return null;
                     const isSentByMe = isCurrentUserMessage(message);
-                    console.log('Message:', message, 'isSentByMe:', isSentByMe);
+                    const itemDetails = selectedChat.foodItemId?.foodItems?.[0] || selectedChat.foodItemId?.nonFoodItems?.[0];
+                    const isFood = selectedChat.foodItemId?.foodItems !== undefined;
                     
                     return (
                       <motion.div
@@ -284,6 +509,28 @@ const Chats = () => {
                               : 'bg-white text-gray-800 rounded-bl-none border-2 border-gray-600'
                           } shadow-sm`}
                         >
+                          <div className="mb-1">
+                            {!isSentByMe && (
+                              <p className="font-semibold text-sm mb-1">
+                                {selectedChat?.donorId?.username || 'Unknown User'}
+                              </p>
+                            )}
+                            {!isSentByMe && itemDetails && (
+                              <div className="text-xs text-gray-600 mb-2">
+                                {isFood ? (
+                                  <>
+                                    <p>🍽️ Food Item: {itemDetails.name}</p>
+                                    <p>Quantity: {itemDetails.quantity} {itemDetails.unit} • Expires: {new Date(itemDetails.expiryDate).toLocaleDateString()}</p>
+                                  </>
+                                ) : (
+                                  <>
+                                    <p>📦 Non-Food Item: {itemDetails.name}</p>
+                                    <p>Quantity: {itemDetails.quantity} • Type: {itemDetails.type} • {itemDetails.condition}</p>
+                                  </>
+                                )}
+                              </div>
+                            )}
+                          </div>
                           <p className="text-sm">{message.content}</p>
                           <p className="text-xs mt-1 opacity-70">
                             {formatTime(message.timestamp)}
