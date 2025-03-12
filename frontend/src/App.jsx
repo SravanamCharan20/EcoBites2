@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import { useEffect } from 'react';
 import { useDispatch } from 'react-redux';
 import { initializeUser } from './reducers/userSlice';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
@@ -7,7 +7,7 @@ import store from './store/store';
 import Signup from './pages/Signup';
 import Signin from './pages/Signin';
 import Home from './pages/Home';
-import PrivateRoute from './components/Privateroute';
+// import PrivateRoute from './components/Privateroute';
 import Header from './components/Header';
 import DonorForm from './pages/Donate';
 import AvailableFoodList from './pages/Avl';
@@ -20,9 +20,10 @@ import AddNonFood from './pages/AddNonFood';
 import AvailableNonFood from './pages/AvailableNonFood';
 import NonFoodDetails from './pages/NonFoodDetails';
 import MyNonFoodRequests from './pages/MyNonFoodRequests';
-import About from './pages/About';
+// import About from './pages/About';
 import UserProfile from './pages/UserProfile';
 import ManageNonFood from './pages/ManageNonFood';
+import Chats from './pages/Chats';
 
 function App() {
   const dispatch = useDispatch();
@@ -55,6 +56,7 @@ function App() {
           <Route path='/update-profile' element={<UpdateProfile/>} />
           <Route path='/myrequests/:userId' element={<MyRequests/>} />
           <Route path='/requests-nonfood/:userId' element={<MyNonFoodRequests/>} />
+          <Route path='/chats' element={<Chats />} />
         </Routes>
       </BrowserRouter>
     </Provider>

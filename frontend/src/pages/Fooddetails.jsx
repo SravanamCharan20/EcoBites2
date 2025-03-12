@@ -1,13 +1,17 @@
-import React, { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+/* eslint-disable no-unused-vars */
+import  { useEffect, useState } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';  // Import leaflet CSS
 import { HiArrowSmRight } from 'react-icons/hi';
 import { CiLocationArrow1 } from "react-icons/ci";
+import { useSelector } from 'react-redux';
 
 
 const FoodDetails = () => {
   const { id } = useParams();
+  const navigate = useNavigate();
+  const { currentUser } = useSelector((state) => state.user);
   const [foodDetails, setFoodDetails] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -28,7 +32,7 @@ const FoodDetails = () => {
     },
     description: '',
   });
-  const [locationMethod, setLocationMethod] = useState('manual');
+  // const [locationMethod, setLocationMethod] = useState('manual');
   const [locationStatus, setLocationStatus] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
@@ -162,6 +166,32 @@ const FoodDetails = () => {
     }
   };
 
+  const handleChatInitialize = async () => {
+    if (!currentUser) {
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/chat/initialize', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          donorId: foodDetails.userId,
+          requesterId: currentUser.id,
+          foodItemId: foodDetails._id
+        }),
+      });
+
+      if (!response.ok) throw new Error('Failed to initialize chat');
+      const chat = await response.json();
+      navigate('/chats', { state: { selectedChat: chat } });
+    } catch (error) {
+      console.error('Error initializing chat:', error);
+    }
+  };
+
   if (loading) return <p className="text-center text-gray-500">Loading...</p>;
   if (error) return <p className="text-center text-red-500">{error}</p>;
   if (!foodDetails) return <p className="text-center text-gray-500">No details available for this item.</p>;
@@ -210,13 +240,20 @@ const FoodDetails = () => {
           ))}
 
           <p className="text-gray-600 mb-2"><strong>Available Until:</strong> {new Date(foodDetails.availableUntil).toLocaleDateString()}</p>
-          <div className="mt-6">
+          <div className="mt-6 flex">
             <button
               className="bg-gray-700 text-white rounded-3xl py-2 px-4 flex items-center justify-center hover:bg-slate-950"
               onClick={() => setShowRequestForm(!showRequestForm)}
             >
               {showRequestForm ? 'Cancel Request' : 'Request Item '}<HiArrowSmRight className='ml-2'/>
             </button>
+          
+          <button
+            onClick={handleChatInitialize}
+            className="bg-blue-500 text-white px-4 py-2 rounded-full hover:bg-blue-600 transition-colors ml-2"
+          >
+            Chat with Donor
+          </button>
           </div>
         </div>
       </div>
@@ -272,6 +309,8 @@ const FoodDetails = () => {
           </button>
         </form>
       )}
+
+      
     </div>
   );
 };

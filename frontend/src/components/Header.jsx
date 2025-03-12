@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { FaCaretDown } from 'react-icons/fa'; // Icon for dropdown
@@ -14,7 +14,6 @@ const Header = () => {
 
   const userId = currentUser?.id;
 
-  const [scrollY, setScrollY] = useState(0); // To track scroll position
   const [isVisible, setIsVisible] = useState(true); // To control navbar visibility
 
   // Effect for handling clicks outside the dropdowns
@@ -173,6 +172,14 @@ const Header = () => {
               )}
             </div>
           )}
+
+          {/* Add this to your navigation links */}
+          <Link
+            to="/chats"
+            className="block px-2 py-1 text-sm text-gray-800 hover:underline"
+          >
+            Chats
+          </Link>
 
           {/* Uncomment if needed */}
           {/* <Link
