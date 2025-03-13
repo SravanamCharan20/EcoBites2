@@ -24,6 +24,8 @@ import MyNonFoodRequests from './pages/MyNonFoodRequests';
 import UserProfile from './pages/UserProfile';
 import ManageNonFood from './pages/ManageNonFood';
 import Chats from './pages/Chats';
+import OAuthCallback from './pages/OAuthCallback';
+import PrivateRoute from './components/PrivateRoute';
 
 function App() {
   const dispatch = useDispatch();
@@ -39,24 +41,84 @@ function App() {
       <Header/>
       </div>
         <Routes>
+          {/* Public Routes */}
           <Route path='/signup' element={<Signup />} />
           <Route path='/signin' element={<Signin />} />
+          <Route path='/oauth/callback' element={<OAuthCallback />} />
           <Route path='/' element={<Home />} />
           {/* <Route path='/about' element={<About />} /> */}
-          <Route path='/avl' element={<AvailableFoodList />} />
-          <Route path='/avlnf' element={<AvailableNonFood />} />
-          <Route path='/donate' element={<DonorForm />} />
-          <Route path='/food-details/:id' element={<Fooddetails />} />
-          <Route path='/nonfood-details/:id' element={<NonFoodDetails />} />
-          <Route path='/addfood' element={<Addfood />} />
-          <Route path='/addnonfood' element={<AddNonFood />} />
-          <Route path='/managefood' element={<Managefood />} />
-          <Route path='/userprofile' element={<UserProfile />} />
-          <Route path='/managenonfood' element={<ManageNonFood />} />
-          <Route path='/update-profile' element={<UpdateProfile/>} />
-          <Route path='/myrequests/:userId' element={<MyRequests/>} />
-          <Route path='/requests-nonfood/:userId' element={<MyNonFoodRequests/>} />
-          <Route path='/chats' element={<Chats />} />
+
+          {/* Protected Routes */}
+          <Route path='/avl' element={
+            <PrivateRoute>
+              <AvailableFoodList />
+            </PrivateRoute>
+          } />
+          <Route path='/avlnf' element={
+            <PrivateRoute>
+              <AvailableNonFood />
+            </PrivateRoute>
+          } />
+          <Route path='/donate' element={
+            <PrivateRoute>
+              <DonorForm />
+            </PrivateRoute>
+          } />
+          <Route path='/food-details/:id' element={
+            <PrivateRoute>
+              <Fooddetails />
+            </PrivateRoute>
+          } />
+          <Route path='/nonfood-details/:id' element={
+            <PrivateRoute>
+              <NonFoodDetails />
+            </PrivateRoute>
+          } />
+          <Route path='/addfood' element={
+            <PrivateRoute>
+              <Addfood />
+            </PrivateRoute>
+          } />
+          <Route path='/addnonfood' element={
+            <PrivateRoute>
+              <AddNonFood />
+            </PrivateRoute>
+          } />
+          <Route path='/managefood' element={
+            <PrivateRoute>
+              <Managefood />
+            </PrivateRoute>
+          } />
+          <Route path='/userprofile' element={
+            <PrivateRoute>
+              <UserProfile />
+            </PrivateRoute>
+          } />
+          <Route path='/managenonfood' element={
+            <PrivateRoute>
+              <ManageNonFood />
+            </PrivateRoute>
+          } />
+          <Route path='/update-profile' element={
+            <PrivateRoute>
+              <UpdateProfile/>
+            </PrivateRoute>
+          } />
+          <Route path='/myrequests/:userId' element={
+            <PrivateRoute>
+              <MyRequests/>
+            </PrivateRoute>
+          } />
+          <Route path='/requests-nonfood/:userId' element={
+            <PrivateRoute>
+              <MyNonFoodRequests/>
+            </PrivateRoute>
+          } />
+          <Route path='/chats' element={
+            <PrivateRoute>
+              <Chats />
+            </PrivateRoute>
+          } />
         </Routes>
       </BrowserRouter>
     </Provider>

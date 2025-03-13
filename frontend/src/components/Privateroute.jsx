@@ -1,10 +1,16 @@
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 
-const PrivateRoute = ({ element: Element }) => {
-  const isAuthenticated = useSelector(state => state.user.isAuthenticated);
+const PrivateRoute = ({ children }) => {
+  const { currentUser, isAuthenticated } = useSelector(state => state.user);
+  const location = useLocation();
 
-  return isAuthenticated ? <Element /> : <Navigate to="/signin" />;
+  if (!isAuthenticated || !currentUser) {
+    // Save the attempted URL for redirecting after login
+    return <Navigate to="/signin" state={{ from: location.pathname }} replace />;
+  }
+
+  return children;
 };
 
 export default PrivateRoute;
