@@ -16,7 +16,8 @@ const requiredEnvVars = [
   'GOOGLE_CLIENT_SECRET',
   'GOOGLE_CALLBACK_URL',
   'CLIENT_URL',
-  'SESSION_SECRET'
+  'SESSION_SECRET',
+  'GEMINI_API_KEY'
 ];
 
 requiredEnvVars.forEach(varName => {
@@ -33,6 +34,7 @@ import authRouter from './routes/auth.route.js';
 import DonorForm from './routes/donor.route.js';
 import notificationRouter from './routes/notification.route.js';
 import analyticsRouter from './routes/analytics.route.js';
+import aiRouter from './routes/ai.routes.js';
 import cors from 'cors';
 import chatRoutes from './routes/chat.route.js';
 import { createServer } from 'http';
@@ -139,6 +141,7 @@ app.use('/api/donor', DonorForm);
 app.use('/api/chat', chatRoutes);
 app.use('/api/notifications', notificationRouter);
 app.use('/api/analytics', analyticsRouter);
+app.use('/api/ai', aiRouter);
 
 app.use((err, req, res, next) => {
     const statusCode = err.statusCode || 500;

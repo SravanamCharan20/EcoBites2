@@ -191,7 +191,7 @@ const Header = () => {
           </Link> */}
 
           {/* Add Notification component here */}
-          <Notification />
+         
 
           {/* Add Analytics link */}
           <Link
@@ -200,6 +200,8 @@ const Header = () => {
           >
             Analytics
           </Link>
+
+          <Notification />
         </div>
       </div>
       <SignupButton />

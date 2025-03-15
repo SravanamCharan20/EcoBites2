@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
@@ -34,6 +34,7 @@ const NonFoodDetails = () => {
   const [locationStatus, setLocationStatus] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
+  const requestFormRef = useRef(null);
 
   useEffect(() => {
     const fetchNonFoodDetails = async () => {
@@ -43,6 +44,7 @@ const NonFoodDetails = () => {
           throw new Error('Failed to fetch non-food details.');
         }
         const data = await response.json();
+        console.log('Fetched non-food details:', data);
         setNonFoodDetails(data);
       } catch (err) {
         setError(err.message);
@@ -84,7 +86,7 @@ const NonFoodDetails = () => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          donorId: nonFoodDetails._id,
+          donorId: nonFoodDetails?._id?.toString(),
           name: formData.name,
           contactNumber: formData.contactNumber,
           address: formData.address,
@@ -215,126 +217,327 @@ const NonFoodDetails = () => {
     }
   };
 
+  // Update the AI estimation helper functions with more specific logic
+  const estimateQualityMetrics = (itemName, condition, type) => {
+    // Base quality scores by condition
+    const conditionScores = {
+      new: { base: 95, durability: 100 },
+      'like new': { base: 85, durability: 90 },
+      good: { base: 75, durability: 80 },
+      fair: { base: 60, durability: 65 },
+      used: { base: 50, durability: 55 }
+    };
+
+    // Type-specific modifiers
+    const typeModifiers = {
+      electronics: { baseModifier: 1.1, durabilityModifier: 0.9 },
+      furniture: { baseModifier: 1.0, durabilityModifier: 1.1 },
+      clothing: { baseModifier: 0.9, durabilityModifier: 0.95 },
+      books: { baseModifier: 1.0, durabilityModifier: 1.0 },
+      appliances: { baseModifier: 1.0, durabilityModifier: 0.9 },
+      tools: { baseModifier: 1.1, durabilityModifier: 1.2 }
+    };
+
+    const itemCondition = (condition || 'used').toLowerCase();
+    const itemType = (type || 'general').toLowerCase();
+    
+    const baseScores = conditionScores[itemCondition] || conditionScores.used;
+    const modifiers = typeModifiers[itemType] || { baseModifier: 1.0, durabilityModifier: 1.0 };
+
+    const qualityScore = Math.min(100, Math.round(baseScores.base * modifiers.baseModifier));
+    const durabilityScore = Math.min(100, Math.round(baseScores.durability * modifiers.durabilityModifier));
+    
+    return {
+      rating: Math.ceil(qualityScore / 20),
+      durabilityScore: durabilityScore,
+      conditionDetails: `${itemCondition.charAt(0).toUpperCase() + itemCondition.slice(1)} condition ${type} item`
+    };
+  };
+
+  const estimateImpact = (itemName, condition, type) => {
+    // Impact metrics based on item type
+    const typeImpact = {
+      electronics: { beneficiaries: 3, resourcesSaved: 75, impact: 'High impact through e-waste reduction' },
+      furniture: { beneficiaries: 4, resourcesSaved: 100, impact: 'Significant wood and material conservation' },
+      clothing: { beneficiaries: 2, resourcesSaved: 25, impact: 'Reduces textile waste and water usage' },
+      books: { beneficiaries: 5, resourcesSaved: 15, impact: 'Promotes education and paper conservation' },
+      appliances: { beneficiaries: 3, resourcesSaved: 85, impact: 'Reduces electronic waste and energy consumption' },
+      tools: { beneficiaries: 4, resourcesSaved: 45, impact: 'Extends product lifecycle and reduces manufacturing demand' }
+    };
+
+    const itemType = (type || 'general').toLowerCase();
+    const metrics = typeImpact[itemType] || { beneficiaries: 2, resourcesSaved: 30, impact: 'Positive impact through reuse' };
+
+    return {
+      potentialBeneficiaries: metrics.beneficiaries,
+      resourcesSaved: metrics.resourcesSaved,
+      environmentalImpact: metrics.impact
+    };
+  };
+
+  const estimateMarketValue = (itemName, condition, type) => {
+    // Market analysis based on item type and condition
+    const typeMarketInfo = {
+      electronics: { demand: 'High', value: 'Strong resale potential' },
+      furniture: { demand: 'Moderate', value: 'Good value for quality pieces' },
+      clothing: { demand: 'Variable', value: 'Depends on brand and condition' },
+      books: { demand: 'Steady', value: 'Educational materials in high demand' },
+      appliances: { demand: 'High', value: 'Essential items with good value' },
+      tools: { demand: 'Moderate', value: 'Practical items retain value well' }
+    };
+
+    const itemType = (type || 'general').toLowerCase();
+    const marketInfo = typeMarketInfo[itemType] || { demand: 'Moderate', value: 'Standard resale value' };
+
+    return {
+      demandLevel: marketInfo.demand,
+      competitiveValue: marketInfo.value
+    };
+  };
+
+  const scrollToRequestForm = () => {
+    setShowRequestForm(true);
+    requestFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
   if (loading) return <p className="text-center text-gray-500">Loading...</p>;
   if (error) return <p className="text-center text-red-500">{error}</p>;
   if (!nonFoodDetails) return <p className="text-center text-gray-500">No details available for this item.</p>;
 
   return (
-    <div className="max-w-6xl mx-auto p-6">
-      <div className="text-center mb-8">
-        <p className="text-xl text-gray-600 mb-12">Explore the details and request any item if you need it!</p>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        <div className="rounded-lg shadow-lg border border-slate-200 transition-transform duration-300 hover:scale-105">
-          <MapContainer
-            center={[nonFoodDetails.location.latitude || 51.505, nonFoodDetails.location.longitude || -0.09]}
-            zoom={13}
-            style={{ height: '400px', width: '100%', borderRadius: '8px' }}
-          >
-            <TileLayer
-              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-            />
-            {nonFoodDetails.location.latitude && nonFoodDetails.location.longitude && (
-              <Marker position={[nonFoodDetails.location.latitude, nonFoodDetails.location.longitude]}>
-                <Popup>
-                  Donor Location: {nonFoodDetails.location.city}, {nonFoodDetails.location.state}
-                </Popup>
-              </Marker>
+    <div className="min-h-screen bg-white">
+      {/* Main Grid Layout */}
+      <div className="grid grid-cols-12 gap-6 p-6">
+        {/* Left Column - Map and Donor Info */}
+        <div className="col-span-full lg:col-span-4 flex flex-col gap-6">
+          {/* Map Section */}
+          <div className="h-[40vh] rounded-3xl overflow-hidden shadow-lg">
+            {nonFoodDetails?.location ? (
+              <MapContainer
+                center={[nonFoodDetails.location?.latitude || 51.505, nonFoodDetails.location?.longitude || -0.09]}
+                zoom={13}
+                style={{ height: '100%', width: '100%' }}
+                className="z-0"
+              >
+                <TileLayer
+                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                  attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                />
+                {nonFoodDetails.location?.latitude && nonFoodDetails.location?.longitude && (
+                  <Marker position={[nonFoodDetails.location.latitude, nonFoodDetails.location.longitude]}>
+                    <Popup>
+                      Donor Location: {nonFoodDetails.location?.city || ''}, {nonFoodDetails.location?.state || ''}
+                    </Popup>
+                  </Marker>
+                )}
+              </MapContainer>
+            ) : (
+              <div className="w-full h-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
+                <p className="text-gray-500">No location available</p>
+              </div>
             )}
-          </MapContainer>
+          </div>
+
+          {/* Donor Information */}
+          <div className="bg-gray-50 rounded-3xl p-6 shadow-lg">
+            <h2 className="text-2xl font-semibold text-gray-900 mb-6">Donor Information</h2>
+            <div className="space-y-4">
+              <div>
+                <p className="text-sm text-gray-500">Name</p>
+                <p className="text-xl font-medium text-gray-900">{nonFoodDetails?.name || 'N/A'}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Contact</p>
+                <p className="text-xl font-medium text-gray-900">{nonFoodDetails?.contactNumber || 'N/A'}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Location</p>
+                <p className="text-xl font-medium text-gray-900">
+                  {nonFoodDetails?.address ? 
+                    [nonFoodDetails.address.city, nonFoodDetails.address.state].filter(Boolean).join(', ') : 
+                    'Address not provided'
+                  }
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex flex-col gap-3">
+            <button
+              onClick={scrollToRequestForm}
+              className="w-full px-6 py-4 bg-gray-900 text-white text-lg font-medium rounded-2xl hover:bg-gray-800 transition-all duration-300 flex items-center justify-center gap-2"
+            >
+              Request Item <HiArrowSmRight />
+            </button>
+            {currentUser && (
+              <button
+                onClick={handleChatInitialize}
+                className="w-full px-6 py-4 bg-white text-gray-900 text-lg font-medium rounded-2xl border-2 border-gray-900 hover:bg-gray-100 transition-all duration-300 flex items-center justify-center gap-2"
+              >
+                Chat with Donor <HiArrowSmRight />
+              </button>
+            )}
+          </div>
         </div>
 
-        <div className="rounded-lg shadow-lg border-2 border-lime-200 p-6 bg-lime-100">
-          <h2 className="text-2xl font-bold text-gray-800 mb-4">Non-Food Details</h2>
-          <p className="text-gray-600 mb-2"><strong>Donor Name:</strong> {nonFoodDetails.name}</p>
-          <p className="text-gray-600 mb-2"><strong>Contact Number:</strong> {nonFoodDetails.contactNumber}</p>
-          <p className="text-gray-600 mb-2"><strong>Location:</strong> {nonFoodDetails.location ? `${nonFoodDetails.location.latitude}, ${nonFoodDetails.location.longitude}` : 'N/A'}</p>
+        {/* Right Column - Item Details */}
+        <div className="col-span-full lg:col-span-8 space-y-6">
+          {/* Header */}
+          <div className="bg-gray-900 rounded-3xl p-8 text-white">
+            <h1 className="text-4xl font-bold tracking-tight mb-2">
+              {nonFoodDetails?.nonFoodItems?.[0]?.name || 'Item Details'}
+            </h1>
+            <p className="text-lg font-light text-gray-300">
+              Share resources, reduce waste, and make a difference in your community
+            </p>
+          </div>
 
-          <h3 className="text-xl font-bold text-gray-800 mt-6 mb-4">Non-Food Items</h3>
-          {nonFoodDetails.nonFoodItems && nonFoodDetails.nonFoodItems.map((item, index) => (
-            <div key={index} className="mb-4 border-t border-gray-300 pt-2">
-              <p className="text-gray-600 mb-1"><strong>Name:</strong> {item.name}</p>
-              <p className="text-gray-600 mb-1"><strong>Type:</strong> {item.type}</p>
-              <p className="text-gray-600 mb-1"><strong>Condition:</strong> {item.condition}</p>
-              <p className="text-gray-600 mb-1"><strong>Quantity:</strong> {item.quantity}</p>
-              <p className="text-gray-600 mb-1"><strong>Price:</strong> {item.price}</p>
-            </div>
-          ))}
-          <p className="text-gray-600 mb-2"><strong>Available Until:</strong> {new Date(nonFoodDetails.availableUntil).toLocaleDateString()}</p>
+          {/* Non-Food Items */}
+          <div className="space-y-8">
+            {(nonFoodDetails?.nonFoodItems || []).map((item, index) => (
+              <div key={index} className="bg-gray-50 rounded-3xl p-6">
+                <div className="grid gap-6 md:grid-cols-2">
+                  {/* Item Specifications */}
+                  <div className="bg-white rounded-2xl p-6 shadow-sm">
+                    <h2 className="text-xl font-semibold text-gray-900 mb-4">Item Specifications</h2>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <p className="text-sm text-gray-500">Type</p>
+                        <p className="text-lg font-medium text-gray-900">{item?.type || 'General'}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-500">Condition</p>
+                        <p className="text-lg font-medium text-gray-900">{item?.condition || 'Used'}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-500">Material</p>
+                        <p className="text-lg font-medium text-gray-900">{item?.material || 'Not specified'}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-500">Features</p>
+                        <p className="text-lg font-medium text-gray-900">{item?.features?.join(', ') || 'None specified'}</p>
+                      </div>
+                    </div>
+                  </div>
 
-          <div className="mt-6 flex">
-            <button
-              className="bg-gray-700 text-white rounded-3xl py-2 px-4 flex items-center justify-center hover:bg-slate-950"
-              onClick={() => setShowRequestForm(!showRequestForm)}
-            >
-              {showRequestForm ? 'Cancel Request' : 'Request Item '}<HiArrowSmRight className='ml-2'/>
-            </button>
-            
-            <button
-              onClick={handleChatInitialize}
-              className="bg-blue-500 text-white px-4 py-2 rounded-full hover:bg-blue-600 transition-colors ml-2"
-            >
-              Chat with Donor
-            </button>
+                  {/* Quality Metrics */}
+                  <div className="bg-white rounded-2xl p-6 shadow-sm">
+                    <h2 className="text-xl font-semibold text-gray-900 mb-4">Quality Assessment</h2>
+                    <div className="grid grid-cols-2 gap-4">
+                      {Object.entries(estimateQualityMetrics(item?.name || '', item?.condition, item?.type)).map(([key, value]) => (
+                        <div key={key}>
+                          <p className="text-sm text-gray-500">{key.charAt(0).toUpperCase() + key.slice(1)}</p>
+                          <p className="text-3xl font-medium text-gray-900">
+                            {key === 'rating' ? '⭐'.repeat(value) : value}
+                            {key !== 'rating' && <span className="text-base text-gray-500 ml-1">%</span>}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Additional Information */}
+                  <div className="bg-white rounded-2xl p-6 shadow-sm md:col-span-2">
+                    <h2 className="text-xl font-semibold text-gray-900 mb-4">Additional Information</h2>
+                    <div className="grid md:grid-cols-2 gap-4">
+                      <div>
+                        <p className="text-sm text-gray-500">Accessories</p>
+                        <p className="text-lg font-medium text-gray-900">
+                          {item?.accessories?.join(', ') || 'None included'}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-500">Dimensions</p>
+                        <p className="text-lg font-medium text-gray-900">
+                          {item?.dimensions || 'Not specified'}
+                        </p>
+                      </div>
+                      <div className="md:col-span-2">
+                        <p className="text-sm text-gray-500">Special Notes</p>
+                        <p className="text-lg font-medium text-gray-900">{item?.specialNotes || 'No special notes'}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Request Form */}
+          <div ref={requestFormRef}>
+            {showRequestForm && (
+              <div className="bg-white rounded-2xl p-6 shadow-sm">
+                <h2 className="text-xl font-semibold text-gray-900 mb-4">Request Form</h2>
+                <form onSubmit={handleRequestSubmit} className="space-y-4">
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm text-gray-500 mb-1" htmlFor="name">Name</label>
+                      <input
+                        className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-900"
+                        type="text"
+                        id="name"
+                        name="name"
+                        value={formData.name}
+                        onChange={handleInputChange}
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm text-gray-500 mb-1" htmlFor="contactNumber">Contact</label>
+                      <input
+                        className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-900"
+                        type="text"
+                        id="contactNumber"
+                        name="contactNumber"
+                        value={formData.contactNumber}
+                        onChange={handleInputChange}
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm text-gray-500 mb-1">Location</label>
+                    <button
+                      type="button"
+                      onClick={handleUseLocation}
+                      className="w-full px-4 py-2 bg-gray-100 text-gray-900 rounded-xl border border-gray-200 hover:bg-gray-200 transition-all duration-300 flex items-center justify-center gap-2"
+                    >
+                      Use My Location <CiLocationArrow1 />
+                    </button>
+                    {locationStatus && (
+                      <p className="mt-1 text-sm text-gray-500">{locationStatus}</p>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block text-sm text-gray-500 mb-1">Description</label>
+                    <textarea
+                      className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-900 min-h-[80px]"
+                      name="description"
+                      value={formData.description}
+                      onChange={handleInputChange}
+                      required
+                    />
+                  </div>
+
+                  {errorMessage && <p className="text-red-500 text-sm">{errorMessage}</p>}
+                  {successMessage && <p className="text-green-500 text-sm">{successMessage}</p>}
+
+                  <button
+                    type="submit"
+                    className="w-full px-6 py-3 bg-gray-900 text-white text-base font-medium rounded-xl hover:bg-gray-800 transition-all duration-300 flex items-center justify-center gap-2"
+                  >
+                    Submit Request <HiArrowSmRight />
+                  </button>
+                </form>
+              </div>
+            )}
           </div>
         </div>
       </div>
-
-      {showRequestForm && (
-        <form onSubmit={handleRequestSubmit} className="mt-8 rounded-lg shadow-lg border-2 border-pink-200 p-6 bg-pink-100">
-          <h2 className="text-2xl font-bold text-gray-800 mb-4">Request Form</h2>
-          <div className="mb-4">
-            <label className="block text-gray-700 mb-1" htmlFor="name">Name:</label>
-            <input
-              className="w-full border border-gray-300 rounded-lg p-2"
-              type="text"
-              id="name"
-              name="name"
-              value={formData.name}
-              onChange={handleInputChange}
-              required
-            />
-          </div>
-          <div className="mb-4">
-            <label className="block text-gray-700 mb-1" htmlFor="contactNumber">Contact Number:</label>
-            <input
-              className="w-full border border-gray-300 rounded-lg p-2"
-              type="text"
-              id="contactNumber"
-              name="contactNumber"
-              value={formData.contactNumber}
-              onChange={handleInputChange}
-              required
-            />
-          </div>
-
-          <h3 className="text-xl font-bold text-gray-800 mb-4">Location</h3>
-          <p className="mb-2">{locationStatus}</p>
-          <button type="button" onClick={handleUseLocation} className="bg-blue-400 mb-4 text-white rounded-3xl py-2 px-4 flex items-center justify-center hover:bg-blue-500">
-            Use My Location<CiLocationArrow1 className='ml-2'/>
-          </button>
-
-          <div className="mb-4">
-            <label className="block text-gray-700 mb-1">Description</label>
-            <textarea
-              name="description"
-              value={formData.description}
-              onChange={handleInputChange}
-              required
-              className="border border-gray-300 p-2 rounded-lg w-full"
-            />
-          </div>
-
-        
-          {successMessage && <p className="text-green-500">{successMessage}</p>}
-          {errorMessage && <p className="text-red-500">{errorMessage}</p>}
-          <button type="submit" className="bg-gray-700 mb-4 mt-4 text-white rounded-3xl py-2 px-4 flex items-center justify-center hover:bg-slate-950">
-            Submit<HiArrowSmRight className='ml-2'/>
-          </button>
-        </form>
-      )}
     </div>
   );
 };

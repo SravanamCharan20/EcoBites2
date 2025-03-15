@@ -3,6 +3,7 @@ import NonFood from '../models/nonfood.model.js';
 import Request from '../models/request.model.js';
 import NonFoodRequest from '../models/nonfoodrequest.model.js';
 import User from '../models/user.model.js';
+import mongoose from 'mongoose';
 
 export const getOverallStats = async (req, res) => {
   try {
@@ -83,7 +84,7 @@ export const getUserStats = async (req, res) => {
     const monthlyFoodDonations = await DonorForm.aggregate([
       {
         $match: {
-          userId,
+          userId: new mongoose.Types.ObjectId(userId),
           createdAt: {
             $gte: new Date(currentYear, 0, 1),
             $lt: new Date(currentYear + 1, 0, 1)
@@ -91,10 +92,12 @@ export const getUserStats = async (req, res) => {
         }
       },
       {
+        $unwind: '$foodItems'
+      },
+      {
         $group: {
           _id: { $month: '$createdAt' },
-          count: { $sum: 1 },
-          items: { $sum: { $size: '$foodItems' } }
+          items: { $sum: 1 }
         }
       },
       { $sort: { '_id': 1 } }
@@ -103,7 +106,7 @@ export const getUserStats = async (req, res) => {
     const monthlyNonFoodDonations = await NonFood.aggregate([
       {
         $match: {
-          userId,
+          userId: new mongoose.Types.ObjectId(userId),
           createdAt: {
             $gte: new Date(currentYear, 0, 1),
             $lt: new Date(currentYear + 1, 0, 1)
@@ -111,63 +114,132 @@ export const getUserStats = async (req, res) => {
         }
       },
       {
+        $unwind: '$nonFoodItems'
+      },
+      {
         $group: {
           _id: { $month: '$createdAt' },
-          count: { $sum: 1 },
-          items: { $sum: { $size: '$nonFoodItems' } }
+          items: { $sum: 1 }
         }
       },
       { $sort: { '_id': 1 } }
     ]);
 
-    // Get donation success rates for both food and non-food
-    const totalFoodRequests = await Request.countDocuments({ userId });
-    const acceptedFoodRequests = await Request.countDocuments({ userId, status: 'accepted' });
-    const foodSuccessRate = totalFoodRequests > 0 ? (acceptedFoodRequests / totalFoodRequests) * 100 : 0;
+    // First get all donations by this user
+    const [foodDonations, nonFoodDonations] = await Promise.all([
+      DonorForm.find({ userId: new mongoose.Types.ObjectId(userId) }),
+      NonFood.find({ userId: new mongoose.Types.ObjectId(userId) })
+    ]);
 
-    const totalNonFoodRequests = await NonFoodRequest.countDocuments({ userId });
-    const acceptedNonFoodRequests = await NonFoodRequest.countDocuments({ userId, status: 'accepted' });
-    const nonFoodSuccessRate = totalNonFoodRequests > 0 ? (acceptedNonFoodRequests / totalNonFoodRequests) * 100 : 0;
+    // Get donation IDs
+    const foodDonationIds = foodDonations.map(d => d._id);
+    const nonFoodDonationIds = nonFoodDonations.map(d => d._id);
+
+    console.log('Food Donation IDs:', foodDonationIds);
+    console.log('Non-Food Donation IDs:', nonFoodDonationIds);
+
+    // Get all requests for these donations
+    const [foodRequests, nonFoodRequests] = await Promise.all([
+      Request.aggregate([
+        {
+          $match: {
+            donationId: { $in: foodDonationIds.map(id => new mongoose.Types.ObjectId(id)) }
+          }
+        },
+        {
+          $group: {
+            _id: '$status',
+            count: { $sum: 1 }
+          }
+        }
+      ]),
+      NonFoodRequest.aggregate([
+        {
+          $match: {
+            donationId: { $in: nonFoodDonationIds.map(id => new mongoose.Types.ObjectId(id)) }
+          }
+        },
+        {
+          $group: {
+            _id: '$status',
+            count: { $sum: 1 }
+          }
+        }
+      ])
+    ]);
+
+    console.log('Food Requests by Status:', foodRequests);
+    console.log('Non-Food Requests by Status:', nonFoodRequests);
+
+    // Convert aggregation results to the required format
+    const getStatusCounts = (requests) => {
+      const counts = {
+        total: 0,
+        accepted: 0,
+        pending: 0,
+        rejected: 0
+      };
+      
+      requests.forEach(req => {
+        counts[req._id] = req.count;
+        counts.total += req.count;
+      });
+      
+      return counts;
+    };
+
+    const requestStats = {
+      food: getStatusCounts(foodRequests),
+      nonFood: getStatusCounts(nonFoodRequests)
+    };
+
+    console.log('Final Request Stats:', requestStats);
 
     // Get active donations count
-    const activeFoodDonations = await DonorForm.countDocuments({
-      userId,
-      availableUntil: { $gt: new Date() }
-    });
+    const [activeFoodDonations, activeNonFoodDonations] = await Promise.all([
+      DonorForm.countDocuments({
+        userId: new mongoose.Types.ObjectId(userId),
+        availableUntil: { $gt: new Date() }
+      }),
+      NonFood.countDocuments({
+        userId: new mongoose.Types.ObjectId(userId),
+        availableUntil: { $gt: new Date() }
+      })
+    ]);
 
-    const activeNonFoodDonations = await NonFood.countDocuments({
-      userId,
-      availableUntil: { $gt: new Date() }
-    });
+    // For development/testing - add sample data if no requests exist
+    if (process.env.NODE_ENV === 'development' && 
+        requestStats.food.total === 0 && 
+        requestStats.nonFood.total === 0) {
+      requestStats.food = {
+        total: 10,
+        accepted: 4,
+        pending: 4,
+        rejected: 2
+      };
+      requestStats.nonFood = {
+        total: 6,
+        accepted: 2,
+        pending: 3,
+        rejected: 1
+      };
+    }
 
     res.json({
       monthlyStats: {
         foodDonations: monthlyFoodDonations,
         nonFoodDonations: monthlyNonFoodDonations
       },
-      successRates: {
-        food: Math.round(foodSuccessRate),
-        nonFood: Math.round(nonFoodSuccessRate),
-        overall: Math.round((foodSuccessRate + nonFoodSuccessRate) / 2)
-      },
+      requestStats,
       activeDonations: {
         food: activeFoodDonations,
         nonFood: activeNonFoodDonations,
         total: activeFoodDonations + activeNonFoodDonations
-      },
-      requestStats: {
-        food: {
-          total: totalFoodRequests,
-          accepted: acceptedFoodRequests
-        },
-        nonFood: {
-          total: totalNonFoodRequests,
-          accepted: acceptedNonFoodRequests
-        }
       }
     });
   } catch (error) {
-    res.status(500).json({ message: 'Error fetching user stats' });
+    console.error('Error in getUserStats:', error);
+    res.status(500).json({ message: 'Error fetching user stats', error: error.message });
   }
 };
 

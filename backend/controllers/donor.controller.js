@@ -8,6 +8,7 @@ import twilio from 'twilio';
 import Request from '../models/request.model.js'
 import NonFoodDonation from '../models/nonfood.model.js';
 import NonFoodRequest from '../models/nonfoodrequest.model.js';
+import { calculateFoodMetrics, calculateNonFoodMetrics } from '../utils/aiMetrics.js';
 
 dotenv.config();
 
@@ -37,17 +38,52 @@ export const donationform = async (req, res) => {
     if (!existingUser) 
       return res.status(400).json({ message: 'Email is not registered. Please sign up.' });
 
+    // Process each food item with AI metrics
+    const processedFoodItems = req.body.foodItems.map(item => {
+      const { metrics, insights, tags, sustainabilityScore } = calculateFoodMetrics(item);
+      return {
+        ...item,
+        impactMetrics: metrics,
+        aiInsights: insights,
+        aiGeneratedTags: tags,
+        sustainabilityScore,
+      };
+    });
+
+    // Calculate overall donation metrics
+    const overallMetrics = processedFoodItems.reduce((acc, item) => ({
+      potentialMealsProvided: acc.potentialMealsProvided + item.impactMetrics.potentialMealsProvided,
+      carbonFootprintSaved: acc.carbonFootprintSaved + item.impactMetrics.carbonFootprintSaved,
+      waterFootprintSaved: acc.waterFootprintSaved + item.impactMetrics.waterFootprintSaved,
+      foodWastePrevented: acc.foodWastePrevented + item.impactMetrics.foodWastePrevented,
+      nutritionalValue: acc.nutritionalValue + item.impactMetrics.nutritionalValue / processedFoodItems.length,
+      communityBenefit: acc.communityBenefit + item.impactMetrics.communityBenefit / processedFoodItems.length,
+    }), {
+      potentialMealsProvided: 0,
+      carbonFootprintSaved: 0,
+      waterFootprintSaved: 0,
+      foodWastePrevented: 0,
+      nutritionalValue: 0,
+      communityBenefit: 0,
+    });
+
     const donor = new Donor({
       ...req.body,
-      userId: existingUser._id
+      userId: existingUser._id,
+      foodItems: processedFoodItems,
+      impactMetrics: overallMetrics,
+      aiGeneratedTags: Array.from(new Set(processedFoodItems.flatMap(item => item.aiGeneratedTags))),
+      sustainabilityScore: processedFoodItems.reduce((acc, item) => acc + item.sustainabilityScore, 0) / processedFoodItems.length,
     });
 
     const savedDonor = await donor.save();
     res.status(201).json(savedDonor);
   } catch (error) {
-    res.status(500).json({ message: 'Failed to create donation.', error });
+    console.error('Error in donationform:', error);
+    res.status(500).json({ message: 'Failed to create donation.', error: error.message });
   }
 };
+
 export const nonfooddonorform = async (req, res) => {
   try {
     const donoremail = req.body.email;
@@ -55,15 +91,49 @@ export const nonfooddonorform = async (req, res) => {
     if (!existingUser) 
       return res.status(400).json({ message: 'Email is not registered. Please sign up.' });
 
+    // Process each non-food item with AI metrics
+    const processedNonFoodItems = req.body.nonFoodItems.map(item => {
+      const { metrics, insights, tags, sustainabilityScore } = calculateNonFoodMetrics(item);
+      return {
+        ...item,
+        impactMetrics: metrics,
+        aiInsights: insights,
+        aiGeneratedTags: tags,
+        sustainabilityScore,
+      };
+    });
+
+    // Calculate overall donation metrics
+    const overallMetrics = processedNonFoodItems.reduce((acc, item) => ({
+      potentialBeneficiaries: acc.potentialBeneficiaries + item.impactMetrics.potentialBeneficiaries,
+      resourcesSaved: acc.resourcesSaved + item.impactMetrics.resourcesSaved,
+      carbonFootprintReduced: acc.carbonFootprintReduced + item.impactMetrics.carbonFootprintReduced,
+      socialImpactScore: acc.socialImpactScore + item.impactMetrics.socialImpactScore / processedNonFoodItems.length,
+      economicValue: acc.economicValue + item.impactMetrics.economicValue,
+      wastePreventionScore: acc.wastePreventionScore + item.impactMetrics.wastePreventionScore / processedNonFoodItems.length,
+    }), {
+      potentialBeneficiaries: 0,
+      resourcesSaved: 0,
+      carbonFootprintReduced: 0,
+      socialImpactScore: 0,
+      economicValue: 0,
+      wastePreventionScore: 0,
+    });
+
     const donor = new NonFoodDonation({
       ...req.body,
-      userId: existingUser._id
+      userId: existingUser._id,
+      nonFoodItems: processedNonFoodItems,
+      impactMetrics: overallMetrics,
+      aiGeneratedTags: Array.from(new Set(processedNonFoodItems.flatMap(item => item.aiGeneratedTags))),
+      sustainabilityScore: processedNonFoodItems.reduce((acc, item) => acc + item.sustainabilityScore, 0) / processedNonFoodItems.length,
     });
 
     const savedDonor = await donor.save();
     res.status(201).json(savedDonor);
   } catch (error) {
-    res.status(500).json({ message: 'Failed to create donation.', error });
+    console.error('Error in nonfooddonorform:', error);
+    res.status(500).json({ message: 'Failed to create donation.', error: error.message });
   }
 };
 
