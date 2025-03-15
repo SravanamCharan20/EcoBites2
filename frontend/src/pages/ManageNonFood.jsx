@@ -29,7 +29,11 @@ const ManageNonFood = () => {
         const jsonPayload = atob(base64);
         const { id: userId } = JSON.parse(jsonPayload);
 
-        const response = await fetch(`/api/donor/usernonfooddonations/${userId}`);
+        const response = await fetch(`/api/donor/usernonfooddonations/${userId}`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
         if (!response.ok) {
           throw new Error('Network response was not ok');
         }

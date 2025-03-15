@@ -31,6 +31,8 @@ import mongoose from 'mongoose';
 import userRouter from './routes/user.route.js';
 import authRouter from './routes/auth.route.js';
 import DonorForm from './routes/donor.route.js';
+import notificationRouter from './routes/notification.route.js';
+import analyticsRouter from './routes/analytics.route.js';
 import cors from 'cors';
 import chatRoutes from './routes/chat.route.js';
 import { createServer } from 'http';
@@ -135,6 +137,8 @@ app.use('/api/user', userRouter);
 app.use('/api/auth', authRouter);
 app.use('/api/donor', DonorForm);
 app.use('/api/chat', chatRoutes);
+app.use('/api/notifications', notificationRouter);
+app.use('/api/analytics', analyticsRouter);
 
 app.use((err, req, res, next) => {
     const statusCode = err.statusCode || 500;
@@ -146,10 +150,12 @@ app.use((err, req, res, next) => {
     });
 });
 
-app.use(express.static(path.join(__dirname, '/frontend/dist')));
+// Serve static files from the frontend build directory
+app.use(express.static(path.join(__dirname, '../frontend/dist')));
 
+// Handle React routing, return all requests to React app
 app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, 'frontend', 'dist', 'index.html'));
+    res.sendFile(path.join(__dirname, '../frontend/dist/index.html'));
 });
 
 mongoose.connect(process.env.MONGO)

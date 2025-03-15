@@ -18,6 +18,7 @@ import {
   getUsernonfoodDonations,
   updatenonfoodDonor,
 } from '../controllers/donor.controller.js';
+import verifyToken from '../middlewares/auth.middleware.js';
 
 const router = express.Router();
 
@@ -30,7 +31,7 @@ router.get('/get-nondonor/:id', getnonid);
 router.put('/:id', updateDonor);
 router.put('/nonfood/:id', updatenonfoodDonor);
 router.get('/userdonations/:userId', getUserDonations); 
-router.get('/usernonfooddonations/:userId', getUsernonfoodDonations); 
+router.get('/usernonfooddonations/:userId', verifyToken, getUsernonfoodDonations); 
 router.post('/request', requestFood);
 router.get('/requests/:userId', getRequestsForDonor);
 router.patch('/requests/:requestId/status', getStatus);

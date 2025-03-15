@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { FaCaretDown } from 'react-icons/fa'; // Icon for dropdown
 import SignupButton from './SIgnupbutton';
+import Notification from './Notification';
 
 const Header = () => {
   const location = useLocation();
@@ -188,6 +189,17 @@ const Header = () => {
           >
             About
           </Link> */}
+
+          {/* Add Notification component here */}
+          <Notification />
+
+          {/* Add Analytics link */}
+          <Link
+            to="/analytics"
+            className="text-gray-600 hover:text-gray-800"
+          >
+            Analytics
+          </Link>
         </div>
       </div>
       <SignupButton />
