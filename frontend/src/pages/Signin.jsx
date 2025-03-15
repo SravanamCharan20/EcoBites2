@@ -15,7 +15,6 @@ export default function SignIn() {
   const location = useLocation();
   const dispatch = useDispatch();
 
-  // Get the redirect path from location state, or default to home
   const from = location.state?.from || '/';
 
   const handleChange = (e) => {
@@ -23,7 +22,6 @@ export default function SignIn() {
   };
 
   const handleGoogleSignIn = () => {
-    // Save the redirect path before redirecting to Google
     localStorage.setItem('redirectPath', from);
     window.location.href = '/api/auth/google';
   };
@@ -47,7 +45,6 @@ export default function SignIn() {
       if (res.ok) {
         localStorage.setItem('access_token', data.token);
         dispatch(setUser({ token: data.token, user: data.user }));
-        // Redirect to the originally requested page
         navigate(from);
       } else {
         setMessage(data.message || 'Invalid credentials, please try again.');
@@ -59,109 +56,139 @@ export default function SignIn() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 py-12 px-4 sm:px-6 lg:px-8">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="max-w-md w-full space-y-8 bg-white p-10 rounded-xl shadow-lg"
-      >
-        <div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            Welcome Back
-          </h2>
-          <p className="mt-2 text-center text-sm text-gray-600">
-            Sign in to your account
-          </p>
-        </div>
-
-        {/* Google Sign In Button */}
-        <div>
-          <button
-            onClick={handleGoogleSignIn}
-            className="w-full flex items-center justify-center gap-3 bg-white text-gray-700 border-2 border-gray-300 p-3 rounded-lg hover:bg-gray-50 transition-colors duration-200"
-          >
-            <FcGoogle className="text-xl" />
-            <span>Continue with Google</span>
-          </button>
-        </div>
-
-        <div className="relative">
-          <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-gray-300"></div>
-          </div>
-          <div className="relative flex justify-center text-sm">
-            <span className="px-2 bg-white text-gray-500">Or continue with</span>
-          </div>
-        </div>
-
-        <form onSubmit={handleSubmit} className="mt-8 space-y-6">
-          <div className="rounded-md shadow-sm space-y-4">
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <FiMail className="h-5 w-5 text-gray-400" />
-              </div>
-              <input
-                type="email"
-                id="email"
-                placeholder="Email address"
-                required
-                className="appearance-none relative block w-full pl-10 pr-3 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-gray-500 sm:text-sm"
-                onChange={handleChange}
-              />
-            </div>
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <FiLock className="h-5 w-5 text-gray-400" />
-              </div>
-              <input
-                type="password"
-                id="password"
-                placeholder="Password"
-                required
-                className="appearance-none relative block w-full pl-10 pr-3 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-gray-500 sm:text-sm"
-                onChange={handleChange}
-              />
-            </div>
+    <div className="min-h-screen bg-white">
+      <div className="grid grid-cols-12 gap-6 p-6">
+        {/* Left Column - Header and Description */}
+        <div className="col-span-full lg:col-span-4 flex flex-col gap-6">
+          {/* Header Section */}
+          <div className="bg-gray-900 rounded-3xl p-8 text-white">
+            <h1 className="text-3xl font-bold tracking-tight mb-2">Welcome Back</h1>
+            <p className="text-lg font-light text-gray-300">
+              Sign in to your account to continue
+            </p>
           </div>
 
-          <div>
-            <button
-              type="submit"
-              disabled={loading}
-              className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-gray-800 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors duration-200"
-            >
-              {loading ? (
-                <SyncLoader size={6} color="#fff" />
-              ) : (
-                'Sign In'
-              )}
-            </button>
-          </div>
-        </form>
-
-        <div className="flex items-center justify-center mt-6">
-          <div className="text-sm">
-            <span className="text-gray-500">Don't have an account? </span>
-            <Link
-              to="/signup"
-              className="font-medium text-gray-800 hover:text-gray-700 transition-colors duration-200"
-            >
-              Sign up
-            </Link>
-          </div>
-        </div>
-
-        {message && (
-          <motion.div
+          {/* Description Card */}
+          <motion.div 
+            className="bg-gray-50 rounded-3xl p-6 shadow-lg"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="mt-4 text-center text-sm text-red-600"
+            transition={{ duration: 0.5 }}
           >
-            {message}
+            <h2 className="text-xl font-semibold text-gray-900 mb-4">Why Sign In?</h2>
+            <ul className="space-y-4 text-gray-600">
+              <li className="flex items-center gap-3">
+                <div className="w-2 h-2 bg-gray-900 rounded-full"></div>
+                <span>Access your donation history</span>
+              </li>
+              <li className="flex items-center gap-3">
+                <div className="w-2 h-2 bg-gray-900 rounded-full"></div>
+                <span>Track your impact</span>
+              </li>
+              <li className="flex items-center gap-3">
+                <div className="w-2 h-2 bg-gray-900 rounded-full"></div>
+                <span>Manage your profile</span>
+              </li>
+            </ul>
           </motion.div>
-        )}
-      </motion.div>
+        </div>
+
+        {/* Right Column - Sign In Form */}
+        <div className="col-span-full lg:col-span-8">
+          <motion.div 
+            className="bg-gray-50 rounded-3xl overflow-hidden shadow-lg"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+          >
+            <div className="p-8 space-y-6">
+              {/* Google Sign In Button */}
+              <button
+                onClick={handleGoogleSignIn}
+                className="w-full flex items-center justify-center gap-3 bg-white text-gray-700 border border-gray-200 p-4 rounded-xl hover:bg-gray-50 transition-all duration-300 shadow-sm"
+              >
+                <FcGoogle className="text-xl" />
+                <span>Continue with Google</span>
+              </button>
+
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-gray-200"></div>
+                </div>
+                <div className="relative flex justify-center text-sm">
+                  <span className="px-4 bg-gray-50 text-gray-500">Or continue with email</span>
+                </div>
+              </div>
+
+              <form onSubmit={handleSubmit} className="space-y-6">
+                {/* Email Field */}
+                <div className="bg-white rounded-2xl p-6 shadow-sm">
+                  <div className="flex items-center gap-3 mb-2">
+                    <FiMail className="text-gray-400 text-xl" />
+                    <label htmlFor="email" className="text-lg font-medium text-gray-900">
+                      Email Address
+                    </label>
+                  </div>
+                  <input
+                    type="email"
+                    id="email"
+                    onChange={handleChange}
+                    required
+                    className="w-full mt-2 px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-500"
+                    placeholder="Enter your email"
+                  />
+                </div>
+
+                {/* Password Field */}
+                <div className="bg-white rounded-2xl p-6 shadow-sm">
+                  <div className="flex items-center gap-3 mb-2">
+                    <FiLock className="text-gray-400 text-xl" />
+                    <label htmlFor="password" className="text-lg font-medium text-gray-900">
+                      Password
+                    </label>
+                  </div>
+                  <input
+                    type="password"
+                    id="password"
+                    onChange={handleChange}
+                    required
+                    className="w-full mt-2 px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-500"
+                    placeholder="Enter your password"
+                  />
+                </div>
+
+                {message && (
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="p-4 bg-red-50 text-red-600 rounded-xl"
+                  >
+                    {message}
+                  </motion.div>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full px-6 py-4 bg-gray-900 text-white rounded-xl hover:bg-gray-800 transition-all duration-300 disabled:opacity-50"
+                >
+                  {loading ? <SyncLoader size={6} color="#fff" /> : 'Sign In'}
+                </button>
+
+                <div className="text-center">
+                  <span className="text-gray-600">Don't have an account? </span>
+                  <Link
+                    to="/signup"
+                    className="text-gray-900 hover:text-gray-700 font-medium transition-colors duration-200"
+                  >
+                    Sign up
+                  </Link>
+                </div>
+              </form>
+            </div>
+          </motion.div>
+        </div>
+      </div>
     </div>
   );
 }

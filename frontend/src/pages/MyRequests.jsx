@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { FiSearch } from "react-icons/fi";
+import { FiSearch, FiFilter } from "react-icons/fi";
 import { motion } from 'framer-motion';
 import { MdPendingActions } from "react-icons/md";
 import { FcAcceptDatabase } from "react-icons/fc";
 import { ImCancelCircle } from "react-icons/im";
+import { HiLocationMarker } from "react-icons/hi";
 
 const MyRequests = () => {
   const { userId } = useParams();
@@ -13,8 +14,9 @@ const MyRequests = () => {
   const [error, setError] = useState('');
   const [loadingRequestId, setLoadingRequestId] = useState(null);
   const [loadingAction, setLoadingAction] = useState('');
-  const [filter, setFilter] = useState('accepted'); // 'accepted', 'rejected', or 'pending'
+  const [filter, setFilter] = useState('pending');
   const [searchTerm, setSearchTerm] = useState('');
+  const [showFilters, setShowFilters] = useState(false);
 
   useEffect(() => {
     if (!userId) {
@@ -82,89 +84,191 @@ const MyRequests = () => {
     return matchesFilter && matchesSearchTerm;
   });
 
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'Accepted':
+        return 'bg-teal-100 text-teal-600';
+      case 'Rejected':
+        return 'bg-red-100 text-red-600';
+      default:
+        return 'bg-amber-100 text-amber-600';
+    }
+  };
+
   if (loading) return <p className="text-center text-gray-500">Loading...</p>;
   if (error) return <p className="text-center text-red-500">{error}</p>;
 
   return (
-    <div className="p-4 max-w-4xl mx-auto">
-      <h2 className="text-2xl font-bold mb-4 text-center">My Requests</h2>
-      <div className="flex justify-between mb-4">
-        <div className="flex items-center border-2 rounded-full w-1/3 p-2">
-          <FiSearch className="mr-2" />
-          <input
-            type="text"
-            placeholder="Search"
-            value={searchTerm}
-            onChange={e => setSearchTerm(e.target.value)}
-            className="outline-none w-full"
-          />
-        </div>
-        <div className='flex'>
-          <button
-            onClick={() => setFilter('pending')}
-            className={`flex px-4 py-2 rounded-full button-transition ${filter === 'pending' ? 'bg-amber-400 text-white' : ''}`}
-          >
-            <MdPendingActions className='mr-2 mt-1' />
-            Pending
-          </button>
-          <button
-            onClick={() => setFilter('accepted')}
-            className={`flex px-4 py-2 rounded-full button-transition ${filter === 'accepted' ? 'bg-teal-600 text-white' : ''}`}
-          >
-            <FcAcceptDatabase className='mr-2 mt-1' />
-            Accepted
-          </button>
-          <button
-            onClick={() => setFilter('rejected')}
-            className={`flex px-4 py-2 ml-4 rounded-full button-transition ${filter === 'rejected' ? 'bg-red-500 text-white' : ''}`}
-          >
-            <ImCancelCircle className='mr-2 mt-1' />
-            Rejected
-          </button>
-        </div>
-      </div>
-      <div className="grid grid-cols-1 gap-4">
-        {filteredRequests.length === 0 ? (
-          <p className="text-center text-gray-500">No requests found.</p>
-        ) : (
-          filteredRequests.map(request => (
-            <motion.div
-              key={request._id}
-              className="border-b border-gray-300 py-4"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.3 }}
+    <div className="min-h-screen bg-white">
+      <div className="grid grid-cols-12 gap-6 p-6">
+        {/* Left Column - Search and Filters */}
+        <div className="col-span-full lg:col-span-4 flex flex-col gap-6">
+          {/* Header Section */}
+          <div className="bg-gray-900 rounded-3xl p-8 text-white">
+            <h1 className="text-3xl font-bold tracking-tight mb-2">My Requests</h1>
+            <p className="text-lg font-light text-gray-300">
+              Track and manage your donation requests
+            </p>
+          </div>
+
+          {/* Search and Filter Controls */}
+          <div className="bg-gray-50 rounded-3xl p-6 shadow-lg space-y-4">
+            <div className="flex items-center border-2 rounded-full w-full p-2 bg-white">
+              <FiSearch className="text-gray-500 mr-2" />
+              <input
+                type="text"
+                placeholder="Search by requester name"
+                value={searchTerm}
+                onChange={e => setSearchTerm(e.target.value)}
+                className="outline-none w-full"
+              />
+            </div>
+
+            <button
+              onClick={() => setShowFilters(!showFilters)}
+              className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gray-900 text-white rounded-xl hover:bg-gray-800 transition-all duration-300"
             >
-              <p><strong>Requester Name:</strong> {request.requesterName}</p>
-              <p><strong>Contact Number:</strong> {request.contactNumber}</p>
-              <p><strong>Address:</strong> {`${request.address?.street || 'N/A'}, ${request.address?.city || 'N/A'}, ${request.address?.state || 'N/A'}, ${request.address?.postalCode || 'N/A'}, ${request.address?.country || 'N/A'}`}</p>
-              <p><strong>Description:</strong> {request.description}</p>
-              <p className={`mt-1 ${request.status === 'Accepted' ? 'text-teal-600' : request.status === 'Rejected' ? 'text-red-500' : 'text-yellow-500'}`}>
-                <strong>Status:</strong> {request.status}
-              </p>
-              <div className="flex gap-2 mt-2">
-                {request.status === 'Pending' && (
-                  <>
-                    <button
-                      className="border rounded-full bg-teal-600 hover:bg-teal-800 text-white px-4 py-2"
-                      onClick={() => handleStatusChange(request._id, 'Accepted')}
-                      disabled={loadingRequestId === request._id && loadingAction !== 'Accepted'}
-                    >
-                      {loadingRequestId === request._id && loadingAction === 'Accepted' ? 'Accepting...' : 'Accept'}
-                    </button>
-                    <button
-                      className="border rounded-full bg-red-500 hover:bg-red-600 text-white px-4 py-2"
-                      onClick={() => handleStatusChange(request._id, 'Rejected')}
-                      disabled={loadingRequestId === request._id && loadingAction !== 'Rejected'}
-                    >
-                      {loadingRequestId === request._id && loadingAction === 'Rejected' ? 'Rejecting...' : 'Reject'}
-                    </button>
-                  </>
-                )}
+              <FiFilter /> {showFilters ? 'Hide Filters' : 'Show Filters'}
+            </button>
+
+            {showFilters && (
+              <div className="space-y-4">
+                <button
+                  onClick={() => setFilter('pending')}
+                  className={`w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl transition-all duration-300 ${
+                    filter === 'pending' 
+                      ? 'bg-amber-100 text-amber-600' 
+                      : 'bg-white text-gray-600 hover:bg-gray-50'
+                  }`}
+                >
+                  <MdPendingActions className="text-xl" />
+                  Pending Requests
+                </button>
+
+                <button
+                  onClick={() => setFilter('accepted')}
+                  className={`w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl transition-all duration-300 ${
+                    filter === 'accepted' 
+                      ? 'bg-teal-100 text-teal-600' 
+                      : 'bg-white text-gray-600 hover:bg-gray-50'
+                  }`}
+                >
+                  <FcAcceptDatabase className="text-xl" />
+                  Accepted Requests
+                </button>
+
+                <button
+                  onClick={() => setFilter('rejected')}
+                  className={`w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl transition-all duration-300 ${
+                    filter === 'rejected' 
+                      ? 'bg-red-100 text-red-600' 
+                      : 'bg-white text-gray-600 hover:bg-gray-50'
+                  }`}
+                >
+                  <ImCancelCircle className="text-xl" />
+                  Rejected Requests
+                </button>
               </div>
-            </motion.div>
-          ))
-        )}
+            )}
+          </div>
+        </div>
+
+        {/* Right Column - Requests List */}
+        <div className="col-span-full lg:col-span-8 space-y-6">
+          {filteredRequests.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-96 bg-gray-50 rounded-3xl p-8 text-center">
+              <div className="bg-gray-100 p-4 rounded-full mb-4">
+                <MdPendingActions className="w-12 h-12 text-gray-400" />
+              </div>
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">No Requests Found</h3>
+              <p className="text-gray-500 mb-6 max-w-md">
+                {filter === 'pending' 
+                  ? "You don't have any pending requests at the moment."
+                  : filter === 'accepted'
+                  ? "You haven't accepted any requests yet."
+                  : "You haven't rejected any requests yet."}
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {filteredRequests.map((request) => (
+                <motion.div
+                  key={request._id}
+                  className="bg-gray-50 rounded-3xl overflow-hidden shadow-lg"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.3 }}
+                >
+                  <div className="p-8">
+                    <div className="flex justify-between items-start mb-6">
+                      <div>
+                        <h2 className="text-2xl font-semibold text-gray-900">{request.requesterName}</h2>
+                        <p className="text-gray-600">{request.contactNumber}</p>
+                      </div>
+                      <span className={`px-4 py-2 rounded-full text-sm font-medium ${getStatusColor(request.status)}`}>
+                        {request.status}
+                      </span>
+                    </div>
+
+                    {/* Location Information */}
+                    <div className="mb-6 bg-gradient-to-br from-blue-50 to-blue-100 rounded-2xl p-6">
+                      <div className="flex items-center gap-2 mb-3">
+                        <HiLocationMarker className="text-blue-600 text-xl" />
+                        <h3 className="text-xl font-semibold text-gray-900">Location</h3>
+                      </div>
+                      {request.address ? (
+                        <div className="space-y-2">
+                          <p className="text-gray-600">
+                            {request.address.street && <span className="block">{request.address.street}</span>}
+                            {request.address.city && request.address.state && (
+                              <span className="block">{request.address.city}, {request.address.state}</span>
+                            )}
+                            {request.address.postalCode && (
+                              <span className="block">{request.address.postalCode}</span>
+                            )}
+                            {request.address.country && (
+                              <span className="block">{request.address.country}</span>
+                            )}
+                          </p>
+                        </div>
+                      ) : (
+                        <p className="text-gray-500">No location information available</p>
+                      )}
+                    </div>
+
+                    {/* Description */}
+                    <div className="bg-white rounded-2xl p-6 shadow-sm mb-6">
+                      <h3 className="text-xl font-semibold text-gray-900 mb-3">Request Description</h3>
+                      <p className="text-gray-600">{request.description || 'No description provided'}</p>
+                    </div>
+
+                    {/* Action Buttons */}
+                    {request.status === 'Pending' && (
+                      <div className="flex gap-4">
+                        <button
+                          className="flex-1 px-6 py-3 bg-teal-600 text-white rounded-xl hover:bg-teal-700 transition-all duration-300 flex items-center justify-center gap-2 disabled:opacity-50"
+                          onClick={() => handleStatusChange(request._id, 'Accepted')}
+                          disabled={loadingRequestId === request._id}
+                        >
+                          <FcAcceptDatabase className="text-xl" />
+                          {loadingRequestId === request._id && loadingAction === 'Accepted' ? 'Accepting...' : 'Accept Request'}
+                        </button>
+                        <button
+                          className="flex-1 px-6 py-3 bg-red-500 text-white rounded-xl hover:bg-red-600 transition-all duration-300 flex items-center justify-center gap-2 disabled:opacity-50"
+                          onClick={() => handleStatusChange(request._id, 'Rejected')}
+                          disabled={loadingRequestId === request._id}
+                        >
+                          <ImCancelCircle className="text-xl" />
+                          {loadingRequestId === request._id && loadingAction === 'Rejected' ? 'Rejecting...' : 'Reject Request'}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
