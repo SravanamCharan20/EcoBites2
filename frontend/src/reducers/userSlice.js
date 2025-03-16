@@ -1,31 +1,42 @@
+/* eslint-disable no-unused-vars */
 import { createSlice } from '@reduxjs/toolkit';
+import { jwtDecode } from 'jwt-decode';
 
-function parseJwt(token) {
-  try {
-    const base64Url = token.split('.')[1];
-    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-    const jsonPayload = decodeURIComponent(atob(base64).split('').map(c => 
-      '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
-    ).join(''));
-
-    return JSON.parse(jsonPayload);
-  } catch (error) {
-    console.error('Invalid token:', error);
-    return null;
-  }
-}
-
-function isTokenValid(token) {
+const isTokenValid = (token) => {
   if (!token) return false;
   try {
-    const decoded = parseJwt(token);
-    if (!decoded) return false;
-    const currentTime = Date.now() / 1000;
-    return decoded.exp > currentTime;
+    const decoded = jwtDecode(token);
+    return decoded.exp * 1000 > Date.now();
   } catch (error) {
     return false;
   }
-}
+};
+
+const parseJwt = (token) => {
+  try {
+    return jwtDecode(token);
+  } catch (error) {
+    return null;
+  }
+};
+
+// Helper function to ensure consistent user data structure
+const createUserState = (decoded, userData, token) => {
+  // Ensure we have the profile picture from userData
+  const profilePicture = userData?.profilePicture || null;
+  
+  console.log('Creating user state with profile picture:', profilePicture);
+  
+  return {
+    ...decoded,
+    ...userData,
+    token,
+    // Always use the Cloudinary URL if available
+    profilePicture: profilePicture 
+      ? `${profilePicture}${profilePicture.includes('?') ? '&' : '?'}t=${Date.now()}`
+      : null
+  };
+};
 
 const userSlice = createSlice({
   name: 'user',
@@ -38,17 +49,26 @@ const userSlice = createSlice({
     setUser(state, action) {
       const token = action.payload.token;
       if (isTokenValid(token)) {
-        const user = parseJwt(token);
-        state.currentUser = { 
-          ...user, 
-          token,
-          profilePicture: action.payload.profilePicture 
-        };
+        const decoded = parseJwt(token);
+        const userData = action.payload.user || {};
+        
+        // Use helper function to create consistent user state
+        state.currentUser = createUserState(decoded, userData, token);
         state.isAuthenticated = true;
+        
+        // Store complete user data in localStorage with profile picture
+        const dataToStore = {
+          ...userData,
+          profilePicture: userData.profilePicture || null
+        };
+        
         localStorage.setItem('access_token', token);
-        if (action.payload.user) {
-          localStorage.setItem('user_data', JSON.stringify(action.payload.user));
-        }
+        localStorage.setItem('user_data', JSON.stringify(dataToStore));
+
+        console.log('Redux: Setting user state:', {
+          profilePicture: state.currentUser.profilePicture,
+          userData: dataToStore
+        });
       } else {
         state.currentUser = null;
         state.isAuthenticated = false;
@@ -66,16 +86,28 @@ const userSlice = createSlice({
     },
     initializeUser(state) {
       const token = localStorage.getItem('access_token');
-      const userData = localStorage.getItem('user_data');
+      const userDataStr = localStorage.getItem('user_data');
 
-      if (isTokenValid(token)) {
-        const decoded = parseJwt(token);
-        state.currentUser = {
-          ...decoded,
-          token,
-          ...(userData ? JSON.parse(userData) : {})
-        };
-        state.isAuthenticated = true;
+      if (isTokenValid(token) && userDataStr) {
+        try {
+          const decoded = parseJwt(token);
+          const userData = JSON.parse(userDataStr);
+          
+          // Use helper function to create consistent user state
+          state.currentUser = createUserState(decoded, userData, token);
+          state.isAuthenticated = true;
+
+          console.log('Redux: Initializing user state:', {
+            profilePicture: state.currentUser.profilePicture,
+            userData: userData
+          });
+        } catch (error) {
+          console.error('Error parsing user data:', error);
+          state.currentUser = null;
+          state.isAuthenticated = false;
+          localStorage.removeItem('access_token');
+          localStorage.removeItem('user_data');
+        }
       } else {
         state.currentUser = null;
         state.isAuthenticated = false;

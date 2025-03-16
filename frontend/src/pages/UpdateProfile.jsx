@@ -4,8 +4,9 @@ import { setUser } from '../reducers/userSlice';
 import axios from 'axios';
 import { SyncLoader } from 'react-spinners';
 import { useNavigate } from 'react-router-dom';
-import { FiUser, FiLock, FiUpload, FiMail } from 'react-icons/fi';
+import { FiUser, FiLock, FiUpload } from 'react-icons/fi';
 import { motion } from 'framer-motion';
+import ProfileImage from '../components/ProfileImage';
 
 const UpdateProfile = () => {
   const dispatch = useDispatch();
@@ -20,9 +21,14 @@ const UpdateProfile = () => {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [isSuccess, setIsSuccess] = useState(false);
+  const [uploadError, setUploadError] = useState('');
 
   useEffect(() => {
     if (currentUser) {
+      console.log('UpdateProfile: Current user changed:', {
+        username: currentUser.username,
+        profilePicture: currentUser.profilePicture
+      });
       setUsername(currentUser.username || '');
       setProfilePicture(null);
       setPreview(null);
@@ -31,14 +37,87 @@ const UpdateProfile = () => {
 
   useEffect(() => {
     if (profilePicture) {
-      const objectUrl = URL.createObjectURL(profilePicture);
-      setPreview(objectUrl);
-      return () => URL.revokeObjectURL(objectUrl);
+      console.log('UpdateProfile: New profile picture selected:', {
+        name: profilePicture.name,
+        size: profilePicture.size,
+        type: profilePicture.type
+      });
+
+      // Validate file size
+      if (profilePicture.size > 5 * 1024 * 1024) { // 5MB limit
+        console.warn('UpdateProfile: File size too large:', profilePicture.size);
+        setUploadError('Image size should be less than 5MB');
+        setProfilePicture(null);
+        setPreview(null);
+        return;
+      }
+
+      // Validate file type
+      if (!profilePicture.type.startsWith('image/')) {
+        console.warn('UpdateProfile: Invalid file type:', profilePicture.type);
+        setUploadError('Please upload an image file');
+        setProfilePicture(null);
+        setPreview(null);
+        return;
+      }
+
+      try {
+        // Clean up previous preview URL if it exists
+        if (preview) {
+          URL.revokeObjectURL(preview);
+        }
+
+        const objectUrl = URL.createObjectURL(profilePicture);
+        console.log('UpdateProfile: Created preview URL:', objectUrl);
+        setPreview(objectUrl);
+        setUploadError('');
+      } catch (error) {
+        console.error('UpdateProfile: Error creating preview URL:', error);
+        setUploadError('Error creating image preview');
+        setProfilePicture(null);
+        setPreview(null);
+      }
+
+      return () => {
+        if (preview) {
+          console.log('UpdateProfile: Cleaning up preview URL:', preview);
+          URL.revokeObjectURL(preview);
+        }
+      };
+    } else {
+      // Clean up preview when profilePicture is cleared
+      if (preview) {
+        console.log('UpdateProfile: Cleaning up preview URL on profile picture clear:', preview);
+        URL.revokeObjectURL(preview);
+        setPreview(null);
+      }
     }
   }, [profilePicture]);
 
+  const handleFileSelect = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      console.log('UpdateProfile: File selected:', {
+        name: file.name,
+        size: file.size,
+        type: file.type
+      });
+      setProfilePicture(file);
+    } else {
+      setProfilePicture(null);
+      setPreview(null);
+    }
+  };
+
   const handleUpdate = async (e) => {
     e.preventDefault();
+    if (uploadError) {
+      console.error('UpdateProfile: Cannot update due to upload error:', uploadError);
+      setMessage(uploadError);
+      setIsSuccess(false);
+      return;
+    }
+
     setLoading(true);
     setMessage('');
     setIsSuccess(false);
@@ -47,40 +126,76 @@ const UpdateProfile = () => {
     formData.append('username', username);
 
     if (oldPassword && newPassword) {
+      console.log('UpdateProfile: Password update requested');
       formData.append('oldPassword', oldPassword);
       formData.append('newPassword', newPassword);
     }
 
     if (profilePicture) {
+      console.log('UpdateProfile: Adding profile picture to form data:', {
+        name: profilePicture.name,
+        size: profilePicture.size,
+        type: profilePicture.type
+      });
       formData.append('profilePicture', profilePicture);
     }
 
     try {
-      const response = await axios.put('/api/auth/update', formData, {
+      console.log('UpdateProfile: Sending update request');
+      const response = await axios.put('http://localhost:6001/api/auth/update', formData, {
         headers: {
-          'Authorization': `Bearer ${currentUser?.token}`,
+          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
           'Content-Type': 'multipart/form-data',
         },
       });
 
       if (response.data.success) {
-        dispatch(setUser({
+        console.log('UpdateProfile: Update successful:', response.data);
+        
+        // Ensure we have the complete profile URL
+        const profilePicture = response.data.user.profilePicture;
+        console.log('UpdateProfile: New profile picture URL:', profilePicture);
+
+        const updatedUser = {
           ...currentUser,
-          profilePicture: response.data.user.profilePicture,
-          username: response.data.user.username,
+          ...response.data.user,
+          profilePicture: profilePicture, // Explicitly set the profile picture
+          token: localStorage.getItem('access_token')
+        };
+        
+        // Update Redux state with the new user data
+        dispatch(setUser({
+          user: updatedUser,
+          token: localStorage.getItem('access_token')
         }));
+
         setMessage('Profile updated successfully');
         setIsSuccess(true);
+        
+        // Update local storage with new user data
+        const userData = {
+          ...response.data.user,
+          profilePicture: profilePicture // Ensure profile picture is included
+        };
+        
+        console.log('UpdateProfile: Updating local storage:', userData);
+        localStorage.setItem('user_data', JSON.stringify(userData));
+        
+        // Clear the preview and profile picture states
+        setPreview(null);
+        setProfilePicture(null);
+        
         setTimeout(() => {
           navigate('/userprofile');
         }, 2000);
       } else {
-        setMessage('Failed to update profile');
+        console.error('UpdateProfile: Update failed:', response.data.message);
+        setMessage(response.data.message || 'Failed to update profile');
         setIsSuccess(false);
       }
     } catch (error) {
-      console.error('Error updating profile:', error);
-      setMessage('Failed to update profile');
+      console.error('UpdateProfile: Error during update:', error);
+      setMessage(error.response?.data?.message || 'Failed to update profile');
       setIsSuccess(false);
     } finally {
       setLoading(false);
@@ -108,12 +223,11 @@ const UpdateProfile = () => {
             transition={{ duration: 0.5 }}
           >
             <div className="relative inline-block">
-              <img 
-                src={preview || (currentUser?.profilePicture ? 
-                  `${import.meta.env.VITE_API_URL}/uploads/${currentUser.profilePicture}` : 
-                  'default-profile-pic.jpg')} 
-                alt="Profile Preview" 
-                className="w-32 h-32 rounded-full mx-auto border-4 border-white shadow-lg object-cover"
+              <ProfileImage
+                src={preview || currentUser?.profilePicture}
+                size="large"
+                className="border-4 border-white shadow-lg"
+                alt={`${currentUser?.username || 'User'}'s profile picture`}
               />
             </div>
             <label className="mt-6 w-full px-6 py-3 bg-gray-900 text-white rounded-xl hover:bg-gray-800 transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer">
@@ -121,12 +235,14 @@ const UpdateProfile = () => {
               Choose Photo
               <input
                 type="file"
-                id="profilePicture"
                 accept="image/*"
-                onChange={(e) => setProfilePicture(e.target.files[0])}
+                onChange={handleFileSelect}
                 className="hidden"
               />
             </label>
+            {uploadError && (
+              <p className="mt-2 text-sm text-red-600">{uploadError}</p>
+            )}
           </motion.div>
         </div>
 

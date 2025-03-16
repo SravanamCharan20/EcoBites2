@@ -1,15 +1,14 @@
 import express from 'express';
-import { signin, signup, updateUser, userProfile } from '../controllers/auth.controller.js';
-import authenticateToken from '../middlewares/auth.middleware.js'
-import upload from '../middlewares/upload.js';
+import { signup, signin, updateUser, userProfile } from '../controllers/auth.controller.js';
+import { verifyToken } from '../middlewares/verifyUser.js';
+import { uploadMiddleware } from '../middlewares/upload.js';
 import passport from 'passport';
 import jwt from 'jsonwebtoken';
 
-
 const router = express.Router();
 
-router.post("/signup", signup)
-router.post("/signin", signin)
+router.post('/signup', signup);
+router.post('/signin', signin);
 
 // Google OAuth routes
 router.get('/google',
@@ -18,7 +17,7 @@ router.get('/google',
 
 router.get('/google/callback',
   passport.authenticate('google', { failureRedirect: '/signin' }),
-  (req, res) => {
+  async (req, res) => {
     try {
       // Create JWT token
       const token = jwt.sign(
@@ -27,8 +26,15 @@ router.get('/google/callback',
         { expiresIn: '7d' }
       );
 
-      // Redirect to frontend with token
-      const redirectUrl = `${process.env.CLIENT_URL}/oauth/callback?token=${token}`;
+      // Get user data without password
+      const userData = { ...req.user._doc };
+      delete userData.password;
+
+      // Encode user data
+      const encodedUserData = encodeURIComponent(JSON.stringify(userData));
+
+      // Redirect to frontend with token and user data
+      const redirectUrl = `${process.env.CLIENT_URL}/oauth/callback?token=${token}&userData=${encodedUserData}`;
       res.redirect(redirectUrl);
     } catch (error) {
       console.error('OAuth callback error:', error);
@@ -37,7 +43,7 @@ router.get('/google/callback',
   }
 );
 
-router.put("/update",authenticateToken,upload.single('profilePicture'), updateUser);
-router.get('/user', authenticateToken, userProfile);
+router.put('/update', verifyToken, uploadMiddleware, updateUser);
+router.get('/profile', verifyToken, userProfile);
 
 export default router;

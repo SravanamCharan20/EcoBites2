@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 import React, { useState } from 'react';
 import { MdOutlinePriceChange } from "react-icons/md";
 import { CiLocationArrow1 } from "react-icons/ci";

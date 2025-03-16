@@ -12,17 +12,37 @@ const OAuthCallback = () => {
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const token = params.get('token');
+    const encodedUserData = params.get('userData');
 
     if (token) {
       try {
         // Store the token
         localStorage.setItem('access_token', token);
         
-        // Decode token to get user data
-        const decoded = jwtDecode(token);
+        // Get user data from URL or decode token
+        let userData = {};
+        if (encodedUserData) {
+          try {
+            userData = JSON.parse(decodeURIComponent(encodedUserData));
+            // Store the complete user data
+            localStorage.setItem('user_data', JSON.stringify(userData));
+          } catch (parseError) {
+            console.error('Error parsing user data:', parseError);
+            // Fallback to token data
+            userData = jwtDecode(token);
+          }
+        } else {
+          userData = jwtDecode(token);
+        }
         
-        // Update Redux store with token and decoded user data
-        dispatch(setUser({ token, user: decoded }));
+        console.log('OAuth Callback: Setting user data:', {
+          token,
+          userData,
+          profilePicture: userData.profilePicture
+        });
+
+        // Update Redux store with token and user data
+        dispatch(setUser({ token, user: userData }));
         
         // Get the saved redirect path or default to home
         const redirectPath = localStorage.getItem('redirectPath') || '/';

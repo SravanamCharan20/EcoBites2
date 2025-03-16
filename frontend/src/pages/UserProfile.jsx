@@ -1,8 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { FiEdit2, FiMail, FiUser } from 'react-icons/fi';
 import { HiLocationMarker } from 'react-icons/hi';
+import axios from 'axios';
 
 const UserProfile = () => {
   const [user, setUser] = useState(null);
@@ -12,33 +13,30 @@ const UserProfile = () => {
   const fetchUserDetails = async () => {
     try {
       const token = localStorage.getItem('access_token');
-      const response = await fetch('/api/auth/user', {
-        method: 'GET',
+      if (!token) {
+        throw new Error('No access token found');
+      }
+
+      const response = await axios.get('http://localhost:6001/api/auth/profile', {
         headers: {
           'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
         },
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to fetch user details');
+      if (response.data.success) {
+        setUser(response.data.user);
+      } else {
+        throw new Error(response.data.message || 'Failed to fetch user details');
       }
-
-      const data = await response.json();
-      setUser(data.user);
     } catch (error) {
       console.error('Error fetching user details:', error);
-      setError('Failed to fetch user details');
+      setError(error.message || 'Failed to fetch user details');
     }
   };
 
   useEffect(() => {
     fetchUserDetails();
   }, []);
-
-  const profilePictureUrl = user && user.profilePicture 
-    ? `${import.meta.env.VITE_API_URL}/uploads/${user.profilePicture}` 
-    : 'default-profile-pic.jpg';
 
   const handleUpdateProfile = () => {
     navigate('/update-profile');
@@ -66,7 +64,7 @@ const UserProfile = () => {
           >
             <div className="relative inline-block">
               <img 
-                src={profilePictureUrl} 
+                src={user?.profilePicture || '/default-profile-pic.jpg'} 
                 alt="Profile" 
                 className="w-32 h-32 rounded-full mx-auto border-4 border-white shadow-lg object-cover"
               />
@@ -125,7 +123,7 @@ const UserProfile = () => {
                       <p className="text-gray-600 ml-9">{user.email}</p>
                     </div>
 
-                    {user.address && (
+                    {user.location && (
                       <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-2xl p-6">
                         <div className="flex items-center gap-3 mb-3">
                           <HiLocationMarker className="text-blue-600 text-xl" />
@@ -133,15 +131,13 @@ const UserProfile = () => {
                         </div>
                         <div className="space-y-2 ml-9">
                           <p className="text-gray-600">
-                            {user.address.street && <span className="block">{user.address.street}</span>}
-                            {user.address.city && user.address.state && (
-                              <span className="block">{user.address.city}, {user.address.state}</span>
+                            {user.location.state && user.location.city && (
+                              <span className="block">{user.location.city}, {user.location.state}</span>
                             )}
-                            {user.address.postalCode && (
-                              <span className="block">{user.address.postalCode}</span>
-                            )}
-                            {user.address.country && (
-                              <span className="block">{user.address.country}</span>
+                            {user.location.latitude && user.location.longitude && (
+                              <span className="block">
+                                Lat: {user.location.latitude}, Long: {user.location.longitude}
+                              </span>
                             )}
                           </p>
                         </div>

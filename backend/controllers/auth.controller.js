@@ -2,7 +2,34 @@ import User from '../models/user.model.js';
 import bcryptjs from 'bcryptjs';
 import { errorHandler } from '../utils/error.js';
 import jwt from 'jsonwebtoken';
+import { v2 as cloudinary } from 'cloudinary';
+import streamifier from 'streamifier';
+import dotenv from 'dotenv';
 
+dotenv.config();
+
+// Configure Cloudinary
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET
+});
+
+// Helper function to upload to Cloudinary
+const uploadToCloudinary = (buffer) => {
+  return new Promise((resolve, reject) => {
+    const uploadStream = cloudinary.uploader.upload_stream(
+      {
+        folder: 'profile_pictures',
+      },
+      (error, result) => {
+        if (error) reject(error);
+        else resolve(result);
+      }
+    );
+    streamifier.createReadStream(buffer).pipe(uploadStream);
+  });
+};
 
 export const signup = async (req, res, next) => {
   const { username, email, password, location } = req.body;
@@ -21,6 +48,7 @@ export const signup = async (req, res, next) => {
     next(error);
   }
 };
+
 export const signin = async (req, res, next) => {
   const { email, password } = req.body;
   try {
@@ -54,12 +82,15 @@ export const updateUser = async (req, res, next) => {
   try {
     const user = await User.findById(userId);
     if (!user) {
-      return res.status(404).json({ success: false, message: 'User not found' });
+      return next(errorHandler(404, 'User not found'));
     }
 
-    const isMatch = bcryptjs.compareSync(oldPassword, user.password);
-    if (!isMatch) {
-      return res.status(401).json({ success: false, message: 'Old password is incorrect' });
+    // Only check password if oldPassword is provided
+    if (oldPassword) {
+      const isMatch = bcryptjs.compareSync(oldPassword, user.password);
+      if (!isMatch) {
+        return next(errorHandler(401, 'Old password is incorrect'));
+      }
     }
 
     const updates = {};
@@ -71,41 +102,69 @@ export const updateUser = async (req, res, next) => {
       updates.password = bcryptjs.hashSync(newPassword, 10);
     }
 
-    // Handle image upload to Imgur
+    // Handle profile picture upload
     if (req.file) {
-      const imgurResponse = await axios.post('https://api.imgur.com/3/image', req.file.buffer, {
-        headers: {
-          Authorization: `82712046c7d5144`, // Replace with your Imgur Client ID
-          'Content-Type': 'application/json',
-        },
-      });
-      updates.profilePicture = imgurResponse.data.data.link; // Get the image link from Imgur
+      try {
+        // Delete old image from Cloudinary if it exists
+        if (user.profilePicture && user.profilePicture.includes('cloudinary')) {
+          try {
+            const publicId = user.profilePicture.split('/').pop().split('.')[0];
+            await cloudinary.uploader.destroy(`profile_pictures/${publicId}`);
+          } catch (deleteError) {
+            console.error('Error deleting old image:', deleteError);
+            // Continue with upload even if delete fails
+          }
+        }
+
+        // Upload new image
+        const result = await uploadToCloudinary(req.file.buffer);
+        if (!result || !result.secure_url) {
+          throw new Error('Failed to get image URL from Cloudinary');
+        }
+        updates.profilePicture = result.secure_url;
+      } catch (uploadError) {
+        console.error('Error uploading image:', uploadError);
+        return next(errorHandler(500, 'Error uploading profile picture: ' + uploadError.message));
+      }
     }
 
-    const updatedUser = await User.findByIdAndUpdate(userId, { $set: updates }, { new: true });
+    // Only update if there are changes
+    if (Object.keys(updates).length === 0) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'No updates provided' 
+      });
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(
+      userId, 
+      { $set: updates }, 
+      { new: true, runValidators: true }
+    ).select('-password');
 
     if (!updatedUser) {
-      return res.status(404).json({ success: false, message: 'Update failed' });
+      return next(errorHandler(404, 'Update failed'));
     }
 
-    const { password: hashedPassword, ...rest } = updatedUser._doc;
-    res.status(200).json({ success: true, user: { ...rest, profilePicture: updatedUser.profilePicture } });
+    return res.status(200).json({ 
+      success: true, 
+      user: updatedUser 
+    });
   } catch (error) {
-    console.error('Error updating user:', error.message);
-    res.status(500).json({ success: false, message: 'An error occurred while updating the profile' });
-    next(error);
+    console.error('Error updating user:', error);
+    return next(errorHandler(500, 'An error occurred while updating the profile: ' + error.message));
   }
 };
 
-export const userProfile = async (req, res) => {
+export const userProfile = async (req, res, next) => {
   try {
-    const user = await User.findById(req.user.id).select('-password'); // Exclude password
+    const user = await User.findById(req.user.id).select('-password');
     if (!user) {
-      return res.status(404).json({ success: false, message: 'User not found' });
+      return next(errorHandler(404, 'User not found'));
     }
-    res.status(200).json({ success: true, user });
+    return res.status(200).json({ success: true, user });
   } catch (error) {
     console.error('Error fetching user:', error);
-    res.status(500).json({ success: false, message: 'An error occurred' });
+    return next(errorHandler(500, 'An error occurred while fetching user profile'));
   }
 };

@@ -241,14 +241,14 @@ const ManageNonFood = () => {
           <div className="bg-gray-50 rounded-3xl p-6 shadow-lg space-y-4">
             <div className="flex items-center border-2 rounded-full w-full p-2 bg-white">
               <FiSearch className="text-gray-500 mr-2" />
-              <input
-                type="text"
+          <input
+            type="text"
                 placeholder="Search by item name"
                 value={filters.searchQuery}
                 onChange={(e) => setFilters(prev => ({ ...prev, searchQuery: e.target.value }))}
-                className="outline-none w-full"
-              />
-            </div>
+            className="outline-none w-full"
+          />
+        </div>
 
             <button
               onClick={() => setShowFilters(!showFilters)}
@@ -379,37 +379,37 @@ const ManageNonFood = () => {
             </div>
           ) : (
             <div className="space-y-6">
-              {filteredDonations.map((donation) => (
+            {filteredDonations.map((donation) => (
                 <div key={donation._id} className="bg-gray-50 rounded-3xl overflow-hidden shadow-lg">
-                  {editMode === donation._id ? (
+                {editMode === donation._id ? (
                     <div className="p-8">
                       <form onSubmit={(e) => { e.preventDefault(); handleSave(); }} className="space-y-6">
                         {/* Donor Information */}
                         <div className="bg-white rounded-2xl p-6 shadow-sm">
                           <h3 className="text-xl font-semibold text-gray-900 mb-4">Donor Information</h3>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <input
-                              type="text"
-                              name="name"
-                              placeholder="Name"
-                              value={currentDonor.name}
-                              onChange={handleChange}
+                    <input
+                      type="text"
+                      name="name"
+                      placeholder="Name"
+                      value={currentDonor.name}
+                      onChange={handleChange}
                               className="w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-gray-900"
-                            />
-                            <input
-                              type="email"
-                              name="email"
-                              placeholder="Email"
-                              value={currentDonor.email}
-                              onChange={handleChange}
+                    />
+                    <input
+                      type="email"
+                      name="email"
+                      placeholder="Email"
+                      value={currentDonor.email}
+                      onChange={handleChange}
                               className="w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-gray-900"
-                            />
-                            <input
-                              type="tel"
-                              name="contactNumber"
-                              placeholder="Contact Number"
-                              value={currentDonor.contactNumber}
-                              onChange={handleChange}
+                    />
+                    <input
+                      type="tel"
+                      name="contactNumber"
+                      placeholder="Contact Number"
+                      value={currentDonor.contactNumber}
+                      onChange={handleChange}
                               className="w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-gray-900"
                             />
                           </div>
@@ -432,20 +432,20 @@ const ManageNonFood = () => {
                             {currentDonor.nonFoodItems?.map((item, index) => (
                               <div key={index} className="p-6 border rounded-xl bg-gray-50">
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                  <input
-                                    type="text"
-                                    name="name"
+                        <input
+                          type="text"
+                          name="name"
                                     placeholder="Item Name"
-                                    value={item.name}
-                                    onChange={(e) => handleNonFoodItemChange(index, e)}
+                          value={item.name}
+                          onChange={(e) => handleNonFoodItemChange(index, e)}
                                     className="w-full px-4 py-3 border rounded-xl bg-white"
-                                  />
-                                  <input
-                                    type="number"
-                                    name="quantity"
-                                    placeholder="Quantity"
-                                    value={item.quantity}
-                                    onChange={(e) => handleNonFoodItemChange(index, e)}
+                        />
+                        <input
+                          type="number"
+                          name="quantity"
+                          placeholder="Quantity"
+                          value={item.quantity}
+                          onChange={(e) => handleNonFoodItemChange(index, e)}
                                     className="w-full px-4 py-3 border rounded-xl bg-white"
                                   />
                                   <select
@@ -471,35 +471,35 @@ const ManageNonFood = () => {
                                     ))}
                                   </select>
                                 </div>
-                                <button
-                                  type="button"
-                                  onClick={() => removeNonFoodItem(index)}
+                        <button
+                          type="button"
+                          onClick={() => removeNonFoodItem(index)}
                                   className="mt-4 flex items-center gap-2 px-4 py-2 text-red-600 hover:bg-red-50 rounded-xl transition-all duration-300"
-                                >
+                        >
                                   <IoIosRemoveCircle /> Remove Item
-                                </button>
-                              </div>
-                            ))}
+                        </button>
+                      </div>
+                    ))}
                           </div>
                         </div>
 
                         {/* Action Buttons */}
                         <div className="flex items-center gap-4">
-                          <button
-                            type="submit"
+                    <button
+                      type="submit"
                             className="flex-1 px-6 py-3 bg-gray-900 text-white rounded-xl hover:bg-gray-800 transition-all duration-300 flex items-center justify-center gap-2"
-                          >
+                    >
                             Save Changes <HiArrowSmRight />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setEditMode(null)}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setEditMode(null)}
                             className="px-6 py-3 text-gray-600 border border-gray-300 rounded-xl hover:bg-gray-50 transition-all duration-300 flex items-center justify-center gap-2"
-                          >
+                    >
                             <MdCancelPresentation /> Cancel
-                          </button>
+                    </button>
                         </div>
-                      </form>
+                  </form>
                     </div>
                   ) : (
                     <div className="p-8">
@@ -509,12 +509,12 @@ const ManageNonFood = () => {
                           <p className="text-gray-600">{donation.email}</p>
                           <p className="text-gray-600">{donation.contactNumber}</p>
                         </div>
-                        <button
-                          onClick={() => handleEditClick(donation)}
+                    <button
+                      onClick={() => handleEditClick(donation)}
                           className="flex items-center gap-2 px-4 py-2 bg-amber-100 text-amber-600 rounded-xl hover:bg-amber-200 transition-all duration-300"
-                        >
+                    >
                           <FiEdit2 /> Edit
-                        </button>
+                    </button>
                       </div>
 
                       {/* Location Information */}

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { IoMdNotifications } from 'react-icons/io';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSelector } from 'react-redux';
+import axios from 'axios';
 
 const Notification = () => {
   const [notifications, setNotifications] = useState([]);
@@ -18,19 +19,14 @@ const Notification = () => {
         return;
       }
 
-      const response = await fetch('/api/notifications', {
+      const response = await axios.get('http://localhost:6001/api/notifications', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
       });
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data = await response.json();
-      setNotifications(data);
-      const unread = data.filter(n => !n.read).length;
+      setNotifications(response.data);
+      const unread = response.data.filter(n => !n.read).length;
       setUnreadCount(unread);
     } catch (error) {
       console.error('Error fetching notifications:', error);
@@ -56,8 +52,7 @@ const Notification = () => {
 
   const handleNotificationClick = async (notificationId) => {
     try {
-      await fetch(`/api/notifications/${notificationId}/read`, {
-        method: 'PUT',
+      await axios.put(`http://localhost:6001/api/notifications/${notificationId}/read`, null, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('access_token')}`
         }
@@ -70,8 +65,7 @@ const Notification = () => {
 
   const clearAllNotifications = async () => {
     try {
-      await fetch('/api/notifications/mark-all-read', {
-        method: 'PUT',
+      await axios.put('http://localhost:6001/api/notifications/mark-all-read', null, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('access_token')}`
         }
@@ -126,7 +120,7 @@ const Notification = () => {
                   No notifications
                 </div>
               ) : (
-                notifications.map((notification) => (
+                notifications.map(notification => (
                   <Link
                     key={notification._id}
                     to={notification.link}
@@ -147,7 +141,7 @@ const Notification = () => {
                           {notification.message}
                         </p>
                         <p className="text-xs text-gray-400 mt-1">
-                          {new Date(notification.timestamp).toLocaleString()}
+                          {new Date(notification.createdAt).toLocaleString()}
                         </p>
                       </div>
                     </div>

@@ -1,5 +1,5 @@
 import express from 'express';
-import { verifyToken } from '../middleware/auth.js';
+import { verifyToken } from '../middlewares/verifyUser.js';
 import {
   getNotifications,
   createNotification,

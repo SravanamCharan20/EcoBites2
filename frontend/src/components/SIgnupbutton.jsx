@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import Logout from './Logout';
 import { FiLogIn } from "react-icons/fi";
-
+import ProfileImage from './ProfileImage';
 
 const SignupButton = () => {
   const location = useLocation();
@@ -29,25 +29,24 @@ const SignupButton = () => {
   };
 
   return (
-    <div className="fixed  right-10 z-50">
+    <div className="fixed right-10 z-50">
       {currentUser ? (
         <div className="relative" ref={dropdownRef}>
           <button
             onClick={toggleDropdown}
             className="focus:outline-none flex items-center space-x-2"
           >
-            <img
-              src={currentUser.profilePicture ? `${import.meta.env.VITE_API_URL}/uploads/${currentUser.profilePicture}` : '/default profile.jpg'}
-              alt="Profile"
-              className="w-10 h-10 rounded-full object-cover"
+            <ProfileImage
+              src={currentUser.profilePicture}
+              alt={`${currentUser.username}'s profile`}
+              size="medium"
+              className="border-2 border-gray-200"
             />
           </button>
 
           {/* Dropdown Menu */}
           {showDropdown && (
-            <div
-              className="absolute right-0 mt-2 w-48 border bg-[#fff] border-black shadow-lg rounded-lg overflow-hidden z-50"
-            >
+            <div className="absolute right-0 mt-2 w-48 border bg-[#fff] border-black shadow-lg rounded-lg overflow-hidden z-50">
               <Link
                 to="/userprofile"
                 className="block px-4 py-2 text-sm text-gray-700 hover:text-black"
